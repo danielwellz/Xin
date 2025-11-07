@@ -117,14 +117,26 @@ class QdrantVectorStore(VectorStore):
             )
 
     def upsert(self, namespace: str, documents: Iterable[VectorDocument]) -> None:
-        points = [
-            {
-                "id": doc.id or str(uuid.uuid4()),
-                "vector": list(doc.embedding),
-                "payload": {"text": doc.text, "metadata": doc.metadata, "namespace": namespace},
+        points = []
+        for doc in documents:
+            payload_metadata = dict(doc.metadata)
+            payload = {
+                "text": doc.text,
+                "namespace": namespace,
+                "metadata": payload_metadata,
             }
-            for doc in documents
-        ]
+            for key in ("tenant_id", "brand_id", "persona_id", "channel_id"):
+                value = payload_metadata.get(key)
+                if value is not None:
+                    payload[key] = value
+
+            points.append(
+                {
+                    "id": doc.id or str(uuid.uuid4()),
+                    "vector": list(doc.embedding),
+                    "payload": payload,
+                }
+            )
 
         response = self._client.put(
             f"{self._url}/collections/{self._collection}/points?wait=true",
@@ -159,7 +171,12 @@ class QdrantVectorStore(VectorStore):
         results: list[VectorDocument] = []
         for item in payload.get("result", []):
             payload_data = item.get("payload", {})
-            metadata = payload_data.get("metadata") or {}
+            metadata = dict(payload_data.get("metadata") or {})
+            for key in ("tenant_id", "brand_id", "persona_id", "channel_id", "namespace"):
+                value = payload_data.get(key)
+                if value is not None:
+                    metadata.setdefault(key, str(value))
+            metadata.setdefault("namespace", namespace)
             text = payload_data.get("text") or ""
             doc_id = str(item.get("id"))
             results.append(

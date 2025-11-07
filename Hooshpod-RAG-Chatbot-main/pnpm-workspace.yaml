@@ -1,6 +1,0 @@
-packages:
-  - .
-allowScripts:
-  esbuild: true
-  protobufjs: true
-  sharp: true

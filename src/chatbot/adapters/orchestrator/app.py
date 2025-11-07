@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Response
@@ -10,10 +11,17 @@ from chatbot.core.config import AppSettings
 from chatbot.core.http import HealthResponse
 from chatbot.core.logging import configure_logging
 from chatbot.core.middleware import RequestContextMiddleware, metrics_response
-from chatbot.core.telemetry import init_tracing, instrument_fastapi_app, parse_exporter_headers
+from chatbot.core.telemetry import (
+    init_tracing,
+    instrument_fastapi_app,
+    is_tracing_enabled,
+    parse_exporter_headers,
+)
 
 from .dependencies import get_settings
 from .routers import conversations, knowledge, messages
+
+logger = logging.getLogger(__name__)
 
 SettingsDep = Annotated[AppSettings, Depends(get_settings)]
 
@@ -28,6 +36,13 @@ def create_app() -> FastAPI:
         endpoint=settings.telemetry.exporter_endpoint,
         headers=parse_exporter_headers(settings.telemetry.exporter_headers),
     )
+    if is_tracing_enabled():
+        logger.info("tracing active", extra={"service_name": "orchestrator"})
+    else:
+        logger.warning(
+            "tracing disabled; operating without OTLP exporter",
+            extra={"service_name": "orchestrator"},
+        )
 
     app = FastAPI(
         title="Xin Orchestrator Service",

@@ -3,6 +3,14 @@ global:
   otlpEndpoint: ""
   annotations: {}
 
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+  items: []
+
 orchestrator:
   replicaCount: 1
   image:

@@ -7,6 +7,13 @@ from chatbot.rag.chunking import ChunkingConfig, chunk_markdown
 pytestmark = pytest.mark.unit
 
 
+def test_default_chunking_config_matches_reference() -> None:
+    config = ChunkingConfig()
+    assert config.chunk_size == 512
+    assert config.overlap == 64
+    assert config.min_chunk_size == 128
+
+
 def test_chunk_markdown_splits_faq_rows() -> None:
     markdown = """
     # FAQ

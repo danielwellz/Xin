@@ -21,6 +21,7 @@ class EmbeddingSettings:
     openai_model: str = "text-embedding-3-large"
     sentence_transformer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     openai_api_key: str | None = None
+    fallback_to_local: bool = True
 
 
 class EmbeddingService:
@@ -43,16 +44,18 @@ class EmbeddingService:
             return []
 
         if self._settings.provider is LLMProvider.OPENAI:
-            client = self._load_openai_client()
-            response = client.embeddings.create(
-                input=list(texts),
-                model=self._settings.openai_model,
-            )
-            return [list(map(float, item.embedding)) for item in response.data]
+            try:
+                return self._embed_with_openai_sync(texts)
+            except Exception as exc:
+                if self._settings.fallback_to_local:
+                    logger.warning(
+                        "openai embeddings unavailable; using sentence-transformer fallback",
+                        extra={"error": str(exc)},
+                    )
+                    return self._embed_with_sentence_transformer(texts)
+                raise
 
-        model = self._load_sentence_transformer()
-        vectors = model.encode(texts, convert_to_numpy=False, normalize_embeddings=True)
-        return [list(map(float, vector)) for vector in vectors]
+        return self._embed_with_sentence_transformer(texts)
 
     async def embed_async(self, texts: Sequence[str]) -> list[list[float]]:
         """Generate embeddings asynchronously."""
@@ -61,13 +64,41 @@ class EmbeddingService:
             return []
 
         if self._settings.provider is LLMProvider.OPENAI:
-            client = self._load_openai_async_client()
-            response = await client.embeddings.create(
-                input=list(texts),
-                model=self._settings.openai_model,
-            )
-            return [list(map(float, item.embedding)) for item in response.data]
+            try:
+                return await self._embed_with_openai_async(texts)
+            except Exception as exc:
+                if self._settings.fallback_to_local:
+                    logger.warning(
+                        "openai embeddings unavailable; using sentence-transformer fallback",
+                        extra={"error": str(exc)},
+                    )
+                    return await self._embed_with_sentence_transformer_async(texts)
+                raise
 
+        return await self._embed_with_sentence_transformer_async(texts)
+
+    def _embed_with_openai_sync(self, texts: Sequence[str]) -> list[list[float]]:
+        client = self._load_openai_client()
+        response = client.embeddings.create(
+            input=list(texts),
+            model=self._settings.openai_model,
+        )
+        return [list(map(float, item.embedding)) for item in response.data]
+
+    async def _embed_with_openai_async(self, texts: Sequence[str]) -> list[list[float]]:
+        client = self._load_openai_async_client()
+        response = await client.embeddings.create(
+            input=list(texts),
+            model=self._settings.openai_model,
+        )
+        return [list(map(float, item.embedding)) for item in response.data]
+
+    def _embed_with_sentence_transformer(self, texts: Sequence[str]) -> list[list[float]]:
+        model = self._load_sentence_transformer()
+        vectors = model.encode(texts, convert_to_numpy=False, normalize_embeddings=True)
+        return [list(map(float, vector)) for vector in vectors]
+
+    async def _embed_with_sentence_transformer_async(self, texts: Sequence[str]) -> list[list[float]]:
         loop = asyncio.get_running_loop()
         model = self._load_sentence_transformer()
         vectors = await loop.run_in_executor(

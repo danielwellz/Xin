@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, Response
 
 from chatbot.core.logging import configure_logging
 from chatbot.core.middleware import RequestContextMiddleware, metrics_response
-from chatbot.core.telemetry import init_tracing, instrument_fastapi_app, parse_exporter_headers
+from chatbot.core.telemetry import (
+    init_tracing,
+    instrument_fastapi_app,
+    is_tracing_enabled,
+    parse_exporter_headers,
+)
 
 from .dependencies import get_orchestrator_client, get_settings
 from .routers import instagram, telegram, web, whatsapp
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -22,6 +30,13 @@ def create_app() -> FastAPI:
         endpoint=settings.otlp_endpoint,
         headers=parse_exporter_headers(settings.otlp_headers),
     )
+    if is_tracing_enabled():
+        logger.info("tracing active", extra={"service_name": "channel_gateway"})
+    else:
+        logger.warning(
+            "tracing disabled; operating without OTLP exporter",
+            extra={"service_name": "channel_gateway"},
+        )
 
     app = FastAPI(title="Xin Channel Gateway", version=settings.app_version)
     instrument_fastapi_app(app)

@@ -13,9 +13,9 @@ from uuid import uuid4
 class ChunkingConfig:
     """Configuration parameters controlling chunk sizes and overlap."""
 
-    chunk_size: int = 800
-    overlap: int = 120
-    min_chunk_size: int = 120
+    chunk_size: int = 512
+    overlap: int = 64
+    min_chunk_size: int = 128
 
     def __post_init__(self) -> None:
         if self.chunk_size <= 0:

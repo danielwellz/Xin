@@ -32,7 +32,14 @@ def initialize_brand_knowledge(
         "initializing brand knowledge", extra={"namespace": namespace, "count": len(chunks)}
     )
     vector_store.delete_namespace(namespace)
-    _store_chunks(namespace, chunks, embedding_service, vector_store)
+    _store_chunks(
+        namespace,
+        tenant_id=tenant_id,
+        brand_id=brand_id,
+        chunks=chunks,
+        embedding_service=embedding_service,
+        vector_store=vector_store,
+    )
 
 
 def refresh_brand_knowledge(
@@ -47,7 +54,14 @@ def refresh_brand_knowledge(
 
     namespace = _namespace(tenant_id, brand_id)
     logger.info("refreshing brand knowledge", extra={"namespace": namespace, "count": len(chunks)})
-    _store_chunks(namespace, chunks, embedding_service, vector_store)
+    _store_chunks(
+        namespace,
+        tenant_id=tenant_id,
+        brand_id=brand_id,
+        chunks=chunks,
+        embedding_service=embedding_service,
+        vector_store=vector_store,
+    )
 
 
 def retrieve_context(
@@ -89,6 +103,9 @@ def retrieve_context(
 
 def _store_chunks(
     namespace: str,
+    *,
+    tenant_id: UUID | str,
+    brand_id: UUID | str,
     chunks: Sequence[Chunk],
     embedding_service: EmbeddingService,
     vector_store: VectorStore,
@@ -103,12 +120,16 @@ def _store_chunks(
     embeddings = embedding_service.embed(contents)
     if len(embeddings) != len(chunks):
         raise RuntimeError("embedding service did not return vectors for all chunks")
+    base_metadata = {"tenant_id": str(tenant_id), "brand_id": str(brand_id)}
     documents = [
         VectorDocument(
             id=chunk.id,
             text=chunk.content,
             embedding=embedding,
-            metadata=chunk.metadata,
+            metadata={
+                key: str(value)
+                for key, value in {**base_metadata, **(chunk.metadata or {})}.items()
+            },
         )
         for chunk, embedding in zip(chunks, embeddings, strict=False)
     ]

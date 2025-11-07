@@ -26,7 +26,7 @@ from chatbot.adapters.ingestion.pipeline import IngestionPipeline
 from chatbot.adapters.ingestion.settings import IngestionWorkerSettings
 from chatbot.utils.retry import exponential_backoff
 from chatbot.core.logging import configure_logging
-from chatbot.core.telemetry import init_tracing, parse_exporter_headers
+from chatbot.core.telemetry import init_tracing, is_tracing_enabled, parse_exporter_headers
 from chatbot.rag.embeddings import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,13 @@ async def startup(ctx: dict[str, Any]) -> None:
         endpoint=settings.otlp_endpoint,
         headers=parse_exporter_headers(settings.otlp_headers),
     )
+    if is_tracing_enabled():
+        logger.info("tracing active", extra={"service_name": "ingestion_worker"})
+    else:
+        logger.warning(
+            "tracing disabled; operating without OTLP exporter",
+            extra={"service_name": "ingestion_worker"},
+        )
     _ensure_metrics_exporter(settings)
 
     redis_client = Redis(

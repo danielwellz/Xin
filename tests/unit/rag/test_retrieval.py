@@ -71,6 +71,8 @@ def test_initialize_and_retrieve_prioritizes_relevant_chunks() -> None:
 
     assert results
     assert "shipping" in results[0].text.lower()
+    assert results[0].metadata["tenant_id"] == str(tenant_id)
+    assert results[0].metadata["brand_id"] == str(brand_id)
 
 
 def test_refresh_brand_knowledge_merges_content() -> None:

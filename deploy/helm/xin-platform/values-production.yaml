@@ -9,6 +9,8 @@ orchestrator:
     limits:
       cpu: 1
       memory: 1Gi
+  secretRefs:
+    - xin-orchestrator-secrets
 
 channelGateway:
   replicaCount: 4
@@ -21,6 +23,8 @@ channelGateway:
     limits:
       cpu: 1
       memory: 1Gi
+  secretRefs:
+    - xin-channel-gateway-secrets
 
 ingestionWorker:
   replicaCount: 3
@@ -33,3 +37,43 @@ ingestionWorker:
     limits:
       cpu: 600m
       memory: 512Mi
+  secretRefs:
+    - xin-ingestion-worker-secrets
+
+externalSecrets:
+  enabled: true
+  refreshInterval: 30m
+  secretStoreRef:
+    name: doppler-prod
+    kind: ClusterSecretStore
+  items:
+    - name: orchestrator-secrets
+      target:
+        name: xin-orchestrator-secrets
+      dataFrom:
+        - extract:
+            key: xin/platform/prod/orchestrator
+    - name: channel-gateway-secrets
+      target:
+        name: xin-channel-gateway-secrets
+      data:
+        - secretKey: GATEWAY_INSTAGRAM_TOKEN
+          remoteRef:
+            key: xin/platform/prod/channel-gateway
+            property: INSTAGRAM_TOKEN
+        - secretKey: GATEWAY_WHATSAPP_TOKEN
+          remoteRef:
+            key: xin/platform/prod/channel-gateway
+            property: WHATSAPP_TOKEN
+    - name: ingestion-worker-secrets
+      target:
+        name: xin-ingestion-worker-secrets
+      data:
+        - secretKey: INGEST_MINIO_SECRET_KEY
+          remoteRef:
+            key: xin/platform/prod/ingestion
+            property: MINIO_SECRET_KEY
+        - secretKey: INGEST_QDRANT_API_KEY
+          remoteRef:
+            key: xin/platform/prod/ingestion
+            property: QDRANT_API_KEY

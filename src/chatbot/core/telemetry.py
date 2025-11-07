@@ -39,8 +39,9 @@ def init_tracing(
         or os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
     )
     if not effective_endpoint:
-        logger.info(
-            "tracing disabled; no OTLP endpoint configured", extra={"service_name": service_name}
+        logger.warning(
+            "distributed tracing disabled; no OTLP endpoint configured",
+            extra={"service_name": service_name},
         )
         return
 
@@ -56,8 +57,15 @@ def init_tracing(
     _instrument_httpx()
     _TRACING_INITIALISED = True
     logger.info(
-        "tracing initialised", extra={"service_name": service_name, "endpoint": effective_endpoint}
+        "tracing initialised",
+        extra={"service_name": service_name, "endpoint": effective_endpoint},
     )
+
+
+def is_tracing_enabled() -> bool:
+    """Return True when tracing has been initialised for the current process."""
+
+    return _TRACING_INITIALISED
 
 
 def instrument_fastapi_app(app: FastAPI) -> None:
