@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-orchestrator
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  {{- if gt (len .Values.global.annotations) 0 }}
+  annotations:
+    {{- range $k, $v := .Values.global.annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.orchestrator.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orchestrator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orchestrator
+        app.kubernetes.io/component: orchestrator
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.orchestrator.service.port }}"
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: orchestrator
+          image: "{{ .Values.orchestrator.image.repository }}:{{ default .Chart.AppVersion .Values.orchestrator.image.tag }}"
+          imagePullPolicy: {{ .Values.orchestrator.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.orchestrator.service.port }}
+              name: http
+          env:
+            {{- range $key, $value := .Values.orchestrator.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+            {{- if .Values.global.otlpEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.global.otlpEndpoint | quote }}
+            {{- end }}
+          envFrom:
+            {{- range .Values.orchestrator.secretRefs }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- if .Values.orchestrator.resources }}
+          resources: {{- toYaml .Values.orchestrator.resources | nindent 12 }}
+          {{- end }}
+      {{- if .Values.orchestrator.nodeSelector }}
+      nodeSelector: {{- toYaml .Values.orchestrator.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.orchestrator.tolerations }}
+      tolerations: {{- toYaml .Values.orchestrator.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.orchestrator.affinity }}
+      affinity: {{- toYaml .Values.orchestrator.affinity | nindent 8 }}
+      {{- end }}

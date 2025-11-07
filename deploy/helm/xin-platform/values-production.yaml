@@ -1,0 +1,35 @@
+orchestrator:
+  replicaCount: 4
+  image:
+    tag: prod
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+channelGateway:
+  replicaCount: 4
+  image:
+    tag: prod
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+ingestionWorker:
+  replicaCount: 3
+  image:
+    tag: prod
+  resources:
+    requests:
+      cpu: 300m
+      memory: 384Mi
+    limits:
+      cpu: 600m
+      memory: 512Mi

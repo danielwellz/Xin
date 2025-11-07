@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-channel-gateway
+  labels:
+    app.kubernetes.io/name: channel-gateway
+    app.kubernetes.io/component: channel-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  {{- if gt (len .Values.global.annotations) 0 }}
+  annotations:
+    {{- range $k, $v := .Values.global.annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.channelGateway.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: channel-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: channel-gateway
+        app.kubernetes.io/component: channel-gateway
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.channelGateway.service.port }}"
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: channel-gateway
+          image: "{{ .Values.channelGateway.image.repository }}:{{ default .Chart.AppVersion .Values.channelGateway.image.tag }}"
+          imagePullPolicy: {{ .Values.channelGateway.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.channelGateway.service.port }}
+              name: http
+          env:
+            {{- range $key, $value := .Values.channelGateway.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+            {{- if .Values.global.otlpEndpoint }}
+            - name: GATEWAY_OTLP_ENDPOINT
+              value: {{ .Values.global.otlpEndpoint | quote }}
+            {{- end }}
+          envFrom:
+            {{- range .Values.channelGateway.secretRefs }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- if .Values.channelGateway.resources }}
+          resources: {{- toYaml .Values.channelGateway.resources | nindent 12 }}
+          {{- end }}
+      {{- if .Values.channelGateway.nodeSelector }}
+      nodeSelector: {{- toYaml .Values.channelGateway.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.channelGateway.tolerations }}
+      tolerations: {{- toYaml .Values.channelGateway.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.channelGateway.affinity }}
+      affinity: {{- toYaml .Values.channelGateway.affinity | nindent 8 }}
+      {{- end }}

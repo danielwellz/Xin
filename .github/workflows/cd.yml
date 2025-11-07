@@ -1,0 +1,117 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  ORCHESTRATOR_IMAGE: xin-orchestrator
+  CHANNEL_GATEWAY_IMAGE: xin-channel-gateway
+  INGESTION_WORKER_IMAGE: xin-ingestion-worker
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: orchestrator
+            dockerfile: services/orchestrator/Dockerfile
+            image: ${{ env.ORCHESTRATOR_IMAGE }}
+          - name: channel-gateway
+            dockerfile: services/channel_gateway/Dockerfile
+            image: ${{ env.CHANNEL_GATEWAY_IMAGE }}
+          - name: ingestion-worker
+            dockerfile: services/ingestion_worker/Dockerfile
+            image: ${{ env.INGESTION_WORKER_IMAGE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBE_CONFIG_STAGING }}
+        run: |
+          echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
+      - name: Helm upgrade
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          helm upgrade --install xin-platform deploy/helm/xin-platform \
+            --namespace xin-staging --create-namespace \
+            -f deploy/helm/xin-platform/values-staging.yaml \
+            --set orchestrator.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$ORCHESTRATOR_IMAGE \
+            --set orchestrator.image.tag=$IMAGE_TAG \
+            --set channelGateway.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$CHANNEL_GATEWAY_IMAGE \
+            --set channelGateway.image.tag=$IMAGE_TAG \
+            --set ingestionWorker.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$INGESTION_WORKER_IMAGE \
+            --set ingestionWorker.image.tag=$IMAGE_TAG
+      - name: Post-deploy smoke tests
+        run: |
+          bash scripts/smoke_test.sh
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBE_CONFIG_PROD }}
+        run: |
+          echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
+      - name: Helm upgrade
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          helm upgrade --install xin-platform deploy/helm/xin-platform \
+            --namespace xin-prod --create-namespace \
+            -f deploy/helm/xin-platform/values-production.yaml \
+            --set orchestrator.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$ORCHESTRATOR_IMAGE \
+            --set orchestrator.image.tag=$IMAGE_TAG \
+            --set channelGateway.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$CHANNEL_GATEWAY_IMAGE \
+            --set channelGateway.image.tag=$IMAGE_TAG \
+            --set ingestionWorker.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/$INGESTION_WORKER_IMAGE \
+            --set ingestionWorker.image.tag=$IMAGE_TAG
+      - name: Post-deploy smoke tests
+        run: |
+          bash scripts/smoke_test.sh production

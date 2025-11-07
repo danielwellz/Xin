@@ -1,0 +1,9 @@
+Xin Platform deployed.
+
+Orchestrator:    kubectl get svc {{ include "xin-platform.fullname" . }}-orchestrator
+Channel Gateway: kubectl get svc {{ include "xin-platform.fullname" . }}-channel-gateway
+
+Check pods:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Metrics endpoints exposed on respective services at /metrics.

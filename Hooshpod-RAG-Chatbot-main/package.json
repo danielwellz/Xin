@@ -1,0 +1,48 @@
+{
+  "name": "hooshpod-rag-chatbot",
+  "version": "1.0.0",
+  "description": "Backend service for the Hooshpod RAG chatbot assignment.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.6.1",
+    "axios": "^1.7.7",
+    "cohere-ai": "^7.5.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
+    "mongoose": "^8.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.16.10",
+    "@types/supertest": "^2.0.16",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "eslint": "^9.11.1",
+    "globals": "^16.4.0",
+    "supertest": "^7.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^1.6.0"
+  }
+}

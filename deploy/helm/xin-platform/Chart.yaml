@@ -1,0 +1,6 @@
+apiVersion: v2
+name: xin-platform
+description: Helm chart for Xin chatbot platform services
+version: 0.1.0
+appVersion: "0.1.0"
+type: application

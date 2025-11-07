@@ -1,0 +1,14 @@
+{
+  "event_id": "evt-instagram-1",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "brand_id": "22222222-2222-2222-2222-222222222222",
+  "channel_id": "33333333-3333-3333-3333-333333333333",
+  "conversation_id": "44444444-4444-4444-4444-444444444444",
+  "sender_id": "ig_user_42",
+  "message": "Hello from Instagram!",
+  "occurred_at": "2024-01-10T12:00:00+00:00",
+  "locale": "en-US",
+  "metadata": {
+    "source": "instagram"
+  }
+}

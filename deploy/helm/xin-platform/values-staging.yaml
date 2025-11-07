@@ -1,0 +1,14 @@
+orchestrator:
+  replicaCount: 2
+  image:
+    tag: staging
+
+channelGateway:
+  replicaCount: 2
+  image:
+    tag: staging
+
+ingestionWorker:
+  replicaCount: 2
+  image:
+    tag: staging

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-orchestrator
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.orchestrator.service.type }}
+  selector:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.orchestrator.service.port }}
+      targetPort: http

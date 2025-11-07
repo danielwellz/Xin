@@ -1,0 +1,93 @@
+[tool.poetry]
+name = "business-messaging-platform"
+version = "0.1.0"
+description = "Multi-channel RAG-enabled assistant platform for branded customer messaging."
+authors = ["Daniel Wellz <danielwellz@example.com>"]
+readme = "README.md"
+packages = [
+  { include = "chatbot", from = "src" }
+]
+requires-poetry = ">=1.7.0"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.5"
+pydantic-settings = "^2.1"
+structlog = "^23.2"
+opentelemetry-api = "^1.24"
+opentelemetry-sdk = "^1.24"
+httpx = "^0.25"
+sqlmodel = "^0.0.14"
+alembic = "^1.12"
+fastapi = "^0.110"
+uvicorn = "^0.24"
+redis = "^5.0"
+python-multipart = "^0.0.9"
+psycopg2-binary = "^2.9"
+arq = "^0.25.0"
+aioboto3 = "^11.3.0"
+opentelemetry-exporter-otlp = "^1.24"
+opentelemetry-instrumentation-fastapi = "^0.45b0"
+opentelemetry-instrumentation-httpx = "^0.45b0"
+prometheus-client = "^0.20"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.12"
+coverage = "^7.4"
+mypy = "^1.8"
+pytest = "^7.4"
+pytest-asyncio = "^0.23"
+ruff = "^0.1.8"
+testcontainers = "^3.7"
+locust = "^2.20"
+
+[build-system]
+requires = ["poetry-core>=1.7.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "B", "C4", "UP"]
+ignore = ["E203"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_optional = true
+no_implicit_optional = true
+mypy_path = ["src"]
+files = [
+  "src/chatbot",
+  "tests"
+]
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = [
+  "aioboto3",
+  "botocore.*",
+  "psycopg2",
+  "openai",
+  "sentence_transformers",
+  "textract"
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra -q -m 'not integration'"
+pythonpath = [".", "src"]
+testpaths = ["tests"]
+markers = [
+  "unit: fast running unit tests",
+  "integration: integration tests requiring multiple components",
+  "contract: contract tests against recorded fixtures"
+]

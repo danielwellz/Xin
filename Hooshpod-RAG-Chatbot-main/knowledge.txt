@@ -1,0 +1,2 @@
+﻿Hooshpod is a platform that helps teams deploy retrieval-augmented chatbots quickly.
+It supports custom knowledge bases and integrates with modern LLM providers.

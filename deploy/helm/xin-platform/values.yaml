@@ -1,0 +1,72 @@
+global:
+  imagePullSecrets: []
+  otlpEndpoint: ""
+  annotations: {}
+
+orchestrator:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/example/xin-orchestrator
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  env:
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DATABASE: chatbot
+    POSTGRES_USER: chatbot
+    POSTGRES_PASSWORD: chatbot
+    REDIS_URL: redis://redis:6379/0
+    QDRANT_URL: http://qdrant:6333
+  secretRefs: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+channelGateway:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/example/xin-channel-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    GATEWAY_ORCHESTRATOR_URL: http://orchestrator:8000
+    GATEWAY_INSTAGRAM_SECRET: dev-instagram
+    GATEWAY_WHATSAPP_SECRET: dev-whatsapp
+    GATEWAY_TELEGRAM_SECRET: dev-telegram
+    GATEWAY_WEB_SECRET: dev-web
+    GATEWAY_REDIS__HOST: redis
+    GATEWAY_REDIS__PORT: "6379"
+    GATEWAY_REDIS__DB: "0"
+  secretRefs: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ingestionWorker:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/example/xin-ingestion-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  env:
+    INGEST_REDIS_HOST: redis
+    INGEST_REDIS_PORT: "6379"
+    INGEST_REDIS_DB: "0"
+    INGEST_POSTGRES_DSN: postgresql://chatbot:chatbot@postgres:5432/chatbot
+    INGEST_MINIO_ENDPOINT_URL: http://minio:9000
+    INGEST_MINIO_ACCESS_KEY: minio
+    INGEST_MINIO_SECRET_KEY: minio123
+    INGEST_QDRANT_URL: http://qdrant:6333
+  secretRefs: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
