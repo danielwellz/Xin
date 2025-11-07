@@ -34,4 +34,4 @@ coverage:
 load-test:
 	$(POETRY) run locust -f tests/load/locustfile.py --headless --users 100 --spawn-rate 20 --run-time 5m
 
-verify: lint typecheck test
+verify: lint typecheck coverage
