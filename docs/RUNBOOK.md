@@ -15,6 +15,11 @@
 - **Logging**:
   - Structured JSON logging via `structlog`; correlation IDs emitted under `correlation_id`. Clients may pass `X-Request-ID` to preserve IDs.
 
+### Telemetry validation checklist
+- After each deploy, confirm services log either `tracing initialised` (when `OTEL_EXPORTER_ENDPOINT` is set) or `tracing disabled; operating without OTLP exporter`. Example: `kubectl logs deployment/xin-platform-orchestrator -n <ns> | grep -E 'tracing (initialised|disabled)'`.
+- Verify `/metrics` is reachable from inside the cluster: `kubectl run curl-metrics --rm -i --restart=Never --image=curlimages/curl:8.5.0 -n <ns> --command -- sh -c "curl -sf http://xin-platform-orchestrator:8000/metrics"`.
+- Alerting: ensure Prometheus scrapes the endpoints specified above; failures surface quickly because smoke tests also probe `/metrics`.
+
 ### Troubleshooting Telemetry
 - **No traces visible**: confirm `OTEL_EXPORTER_ENDPOINT` resolves and collector allows HTTP/protobuf. Logs show `tracing initialised` on success; errors are emitted once at startup.
 - **Prometheus scrape fails**: ensure firewall allows the configured metrics port and scrape path `/metrics`. For ingestion worker exporter, confirm the process has not started twice—only the first invocation binds the port.
@@ -68,6 +73,42 @@ Keep this runbook in sync with infrastructure changes and expand troubleshooting
   - Keep fallback `secretRefs` arrays available for legacy manual secrets, but prefer External Secrets for managed environments.
   - Align `*.secretRefs` in Helm values with the generated secret names (e.g. `xin-orchestrator-secrets`) so pods automatically project the synced data.
   - Restrict service tokens to least privilege and audit access routinely. Lock down CI secrets (`KUBE_CONFIG_*`, registry credentials) accordingly.
+
+### Installing External Secrets Operator (ESO)
+1. Install the CRDs and controller once per cluster:
+   ```bash
+   kubectl apply -f https://github.com/external-secrets/external-secrets/releases/latest/download/crds.yaml
+   helm repo add external-secrets https://charts.external-secrets.io
+   helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets --create-namespace
+   ```
+2. Provision a `ClusterSecretStore` or namespaced `SecretStore` that points to your backing secret manager. Example:
+   ```yaml
+   apiVersion: external-secrets.io/v1beta1
+   kind: ClusterSecretStore
+   metadata:
+     name: doppler-prod
+   spec:
+     provider:
+       doppler:
+         authSecretRef:
+           dopplerToken:
+             name: doppler-token
+             key: token
+   ```
+3. Populate the `externalSecrets` block in your Helm values (see `deploy/helm/xin-platform/README.md`) so ESO materializes Kubernetes Secrets such as `xin-orchestrator-secrets`.
+4. Run `scripts/preflight_check.sh <namespace> <release> <values>` before a deploy to ensure the namespace exists and the expected Secrets are already synced.
+
+## Deployment Preflight Checks
+- Script: `scripts/preflight_check.sh [namespace] [release] [values-file]` (defaults: `xin-staging`, `xin-platform`, staging values).
+- Validates `helm template` output for the provided values and fails fast when manifests cannot render.
+- Confirms the Kubernetes namespace exists and (when `externalSecrets.enabled` is true in either the rendered template or production values) asserts that `xin-orchestrator-secrets` is present. Override the secret via `EXTERNAL_SECRET_NAME`.
+- Optional metrics probe: set `CHECK_METRICS=true` and override `METRICS_SERVICE_HOST`/`PORT`/`PATH` if needed to curl `/metrics` from inside the cluster before deploying.
+- CI/CD usage:
+  ```bash
+  bash scripts/preflight_check.sh xin-staging xin-platform deploy/helm/xin-platform/values-staging.yaml
+  # Production (includes ESO secrets)
+  bash scripts/preflight_check.sh xin-prod xin-platform deploy/helm/xin-platform/values-production.yaml
+  ```
 
 ## Post-deploy Smoke Tests
 - The CD workflow runs `scripts/smoke_test.sh` automatically after each Helm upgrade.
