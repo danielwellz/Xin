@@ -7,7 +7,6 @@ readme = "README.md"
 packages = [
   { include = "chatbot", from = "src" }
 ]
-requires-poetry = ">=1.7.0"
 
 [tool.poetry.dependencies]
 python = "^3.11"
