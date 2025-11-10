@@ -202,17 +202,14 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
     job_timeout = 60 * 10
-    queue_name = IngestionWorkerSettings().redis_queue_name
-
-    @staticmethod
-    def redis_settings() -> RedisSettings:
-        settings = IngestionWorkerSettings()
-        return RedisSettings(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            database=settings.redis_db,
-            password=settings.redis_password,
-        )
+    _ingest_settings = IngestionWorkerSettings()
+    queue_name = _ingest_settings.redis_queue_name
+    redis_settings = RedisSettings(
+        host=_ingest_settings.redis_host,
+        port=_ingest_settings.redis_port,
+        database=_ingest_settings.redis_db,
+        password=_ingest_settings.redis_password,
+    )
 
 
 def _ensure_metrics_exporter(settings: IngestionWorkerSettings) -> None:

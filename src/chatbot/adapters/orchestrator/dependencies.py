@@ -14,6 +14,7 @@ from sqlmodel import Session
 
 from chatbot.core.config import AppSettings
 from chatbot.core.db.session import create_engine_from_settings, init_db
+from chatbot.core.storage import ObjectStorageClient
 from chatbot.rag.embeddings import EmbeddingService, EmbeddingSettings
 from chatbot.rag.vector_store import QdrantVectorStore, VectorStore
 
@@ -25,6 +26,7 @@ from .services import (
     LLMClient,
     OrchestratorService,
 )
+from .tasks import IngestionJobPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +128,28 @@ def get_guardrail_service() -> GuardrailService:
     return GuardrailService()
 
 
+@lru_cache
+def get_storage_client() -> ObjectStorageClient:
+    """Return a boto-backed object storage client."""
+
+    settings = get_settings()
+    return ObjectStorageClient(settings.storage)
+
+
+@lru_cache
+def get_ingestion_job_publisher() -> IngestionJobPublisher:
+    """Return a lazily-connected ingestion job publisher."""
+
+    settings = get_settings()
+    return IngestionJobPublisher(settings.ingestion_queue)
+
+
 EmbeddingDep = Annotated[EmbeddingService | None, Depends(get_embedding_service)]
 VectorStoreDep = Annotated[VectorStore | None, Depends(get_vector_store)]
 SessionDep = Annotated[Session, Depends(get_session)]
 RedisDep = Annotated[Redis | None, Depends(get_redis_client)]
+StorageDep = Annotated[ObjectStorageClient, Depends(get_storage_client)]
+IngestionPublisherDep = Annotated[IngestionJobPublisher, Depends(get_ingestion_job_publisher)]
 
 
 def get_context_service(
@@ -167,8 +187,8 @@ def get_orchestrator_service(
 
 def get_knowledge_service(
     session: SessionDep,
-    redis_client: RedisDep,
+    storage_client: StorageDep,
 ) -> KnowledgeService:
     """Return the knowledge service for ingestion registration."""
 
-    return KnowledgeService(session, redis_client)
+    return KnowledgeService(session, storage_client)

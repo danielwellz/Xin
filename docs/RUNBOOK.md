@@ -15,6 +15,11 @@
 - **Logging**:
   - Structured JSON logging via `structlog`; correlation IDs emitted under `correlation_id`. Clients may pass `X-Request-ID` to preserve IDs.
 
+## Knowledge Upload Checklist
+- Orchestrator requires valid object storage credentials via `STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_REGION`, and `STORAGE_BUCKET`. The bucket is created on-demand if it does not exist.
+- The ingestion worker reads jobs from the ARQ queue configured with `INGEST_REDIS_HOST|PORT|DB|QUEUE_NAME`; mirrors of the same values must be present in the orchestrator `.env` so upload requests can enqueue work successfully.
+- Successful uploads update `knowledge_sources.status` from `pending → processing → ready`. Investigate Postgres for stuck rows and check the worker logs for guardrail failures.
+
 ### Telemetry validation checklist
 - After each deploy, confirm services log either `tracing initialised` (when `OTEL_EXPORTER_ENDPOINT` is set) or `tracing disabled; operating without OTLP exporter`. Example: `kubectl logs deployment/xin-platform-orchestrator -n <ns> | grep -E 'tracing (initialised|disabled)'`.
 - Verify `/metrics` is reachable from inside the cluster: `kubectl run curl-metrics --rm -i --restart=Never --image=curlimages/curl:8.5.0 -n <ns> --command -- sh -c "curl -sf http://xin-platform-orchestrator:8000/metrics"`.

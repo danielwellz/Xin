@@ -28,6 +28,15 @@ orchestrator:
     POSTGRES_PASSWORD: chatbot
     REDIS_URL: redis://redis:6379/0
     QDRANT_URL: http://qdrant:6333
+    STORAGE_ENDPOINT_URL: http://minio:9000
+    STORAGE_ACCESS_KEY: minio
+    STORAGE_SECRET_KEY: minio123
+    STORAGE_REGION: us-east-1
+    STORAGE_BUCKET: brand-knowledge
+    INGEST_REDIS_HOST: redis
+    INGEST_REDIS_PORT: "6379"
+    INGEST_REDIS_DB: "0"
+    INGEST_QUEUE_NAME: ingestion
   secretRefs: []
   resources: {}
   nodeSelector: {}

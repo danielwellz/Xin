@@ -9,7 +9,7 @@
 ## Build, Test, and Development Commands
 - `poetry install` — create the virtualenv and install all runtime and dev dependencies.
 - `poetry run pytest` — execute the complete automated test suite; add `-k name` for targeted runs.
-- `poetry run python -m chatbot.cli` — launch the local chatbot entry point for manual testing.
+- `poetry run python -m chatbot.cli --tenant-id <uuid> --brand-id <uuid> --channel-id <uuid>` — launch the local chatbot entry point for manual testing against a running orchestrator.
 - `make format` — run `ruff format` plus `ruff check --fix` before opening a pull request.
 
 ## Coding Style & Naming Conventions
@@ -31,3 +31,4 @@
 ## Security & Configuration Tips
 - Keep API keys and secrets out of source control; load them via `.env` files consumed by `python-dotenv`.
 - Validate incoming payloads with `pydantic` models and log sanitized request fragments only.
+- Store uploaded knowledge assets exclusively through the configured object storage credentials (`STORAGE_*` settings).

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from psycopg2 import pool
 
-from chatbot.adapters.ingestion.models import IngestionStatus
+from chatbot.core.db.models import KnowledgeSourceStatus
 
 
 @dataclass(slots=True)
@@ -17,7 +17,7 @@ class PostgresStatusSettings:
     dsn: str
     min_connections: int = 1
     max_connections: int = 5
-    table_name: str = "knowledge_ingestion_jobs"
+    table_name: str = "knowledge_sources"
 
 
 class PostgresStatusRepository:
@@ -36,11 +36,11 @@ class PostgresStatusRepository:
             f"""
             UPDATE {self._settings.table_name}
                SET status = %s,
-                   error_message = NULL,
+                   failure_reason = NULL,
                    updated_at = NOW()
              WHERE id = %s
             """,
-            (IngestionStatus.RUNNING.value, job_id),
+            (KnowledgeSourceStatus.PROCESSING.value, job_id),
         )
 
     async def mark_completed(self, job_id: str, *, chunks: int, vectors: int) -> None:
@@ -48,13 +48,11 @@ class PostgresStatusRepository:
             f"""
             UPDATE {self._settings.table_name}
                SET status = %s,
-                   chunks_ingested = %s,
-                   vectors_ingested = %s,
-                   error_message = NULL,
+                   failure_reason = NULL,
                    updated_at = NOW()
              WHERE id = %s
             """,
-            (IngestionStatus.COMPLETED.value, chunks, vectors, job_id),
+            (KnowledgeSourceStatus.READY.value, job_id),
         )
 
     async def mark_failed(self, job_id: str, *, reason: str) -> None:
@@ -62,11 +60,11 @@ class PostgresStatusRepository:
             f"""
             UPDATE {self._settings.table_name}
                SET status = %s,
-                   error_message = %s,
+                   failure_reason = %s,
                    updated_at = NOW()
              WHERE id = %s
             """,
-            (IngestionStatus.FAILED.value, reason, job_id),
+            (KnowledgeSourceStatus.FAILED.value, reason, job_id),
         )
 
     async def _execute(self, query: str, params: tuple[object, ...]) -> None:

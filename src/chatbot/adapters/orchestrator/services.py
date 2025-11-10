@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from redis import Redis
 from sqlalchemy import asc, desc
@@ -18,6 +19,7 @@ from sqlmodel import Session, select
 from chatbot.core.config import AppSettings
 from chatbot.core.db import models as db_models
 from chatbot.core.db.models import KnowledgeSourceStatus, MessageDirection
+from chatbot.core.storage import ObjectStorageClient
 from chatbot.utils.tracing import generate_trace_id
 from chatbot.rag.embeddings import EmbeddingService
 from chatbot.rag.retrieval import retrieve_context
@@ -270,6 +272,12 @@ class ConversationService:
             raise NoResultFound(f"brand {brand_id} not found")
         return brand
 
+    def get_channel_config(self, channel_id: UUID) -> db_models.ChannelConfig:
+        channel = self._session.get(db_models.ChannelConfig, channel_id)
+        if channel is None:
+            raise NoResultFound(f"channel {channel_id} not found")
+        return channel
+
     def fetch_conversation(self, conversation_id: UUID) -> db_models.Conversation:
         conversation = self._session.get(db_models.Conversation, conversation_id)
         if conversation is None:
@@ -305,6 +313,7 @@ class OrchestratorService:
 
         conversation = self._conversation_service.ensure_conversation(payload)
         self._conversation_service.log_inbound(conversation, payload, trace_id=trace_id)
+        channel = self._conversation_service.get_channel_config(payload.channel_id)
 
         history = self._conversation_service.get_history(payload.conversation_id)
         context = self._context_service.retrieve(
@@ -331,11 +340,13 @@ class OrchestratorService:
         )
 
         self._publish_outbound_message(
-            conversation_id=payload.conversation_id,
-            brand_id=payload.brand_id,
-            channel_id=payload.channel_id,
+            outbound_log=outbound,
+            conversation=conversation,
+            channel=channel,
             content=reply,
             trace_id=trace_id,
+            persona_prompt=persona_prompt,
+            context=context,
         )
 
         return ProcessedInbound(
@@ -350,22 +361,38 @@ class OrchestratorService:
     def _publish_outbound_message(
         self,
         *,
-        conversation_id: UUID,
-        brand_id: UUID,
-        channel_id: UUID,
+        outbound_log: db_models.MessageLog,
+        conversation: db_models.Conversation,
+        channel: db_models.ChannelConfig,
         content: str,
         trace_id: str,
+        persona_prompt: str | None,
+        context: Sequence[VectorDocument],
     ) -> None:
         if self._redis is None:
             logger.debug("skipping redis publish; client not configured")
             return
 
-        raw_payload = {
-            "conversation_id": str(conversation_id),
-            "brand_id": str(brand_id),
-            "channel_id": str(channel_id),
-            "content": content,
+        metadata = {
             "trace_id": trace_id,
+            "channel_type": channel.channel_type.value
+            if hasattr(channel.channel_type, "value")
+            else str(channel.channel_type),
+            "persona_prompt": persona_prompt,
+            "context": [
+                {"id": doc.id, "text": doc.text, "metadata": doc.metadata} for doc in context
+            ],
+        }
+
+        raw_payload = {
+            "id": str(outbound_log.id),
+            "tenant_id": str(conversation.tenant_id),
+            "brand_id": str(conversation.brand_id),
+            "channel_id": str(channel.id),
+            "conversation_id": str(conversation.id),
+            "content": content,
+            "created_at": outbound_log.created_at.isoformat(),
+            "metadata": json.dumps(metadata),
         }
         payload = cast(dict[Any, Any], raw_payload)
         try:
@@ -374,12 +401,25 @@ class OrchestratorService:
             logger.exception("failed to publish outbound message to redis stream")
 
 
+@dataclass(slots=True)
+class KnowledgeRegistrationResult:
+    """Return type wrapping a registered knowledge source."""
+
+    knowledge: db_models.KnowledgeSource
+    tenant_id: UUID
+    brand_id: UUID
+    filename: str
+    content_type: str
+    source_uri: str
+    should_enqueue: bool = True
+
+
 class KnowledgeService:
     """Handles registration of brand knowledge uploads."""
 
-    def __init__(self, session: Session, redis_client: Redis | None = None) -> None:
+    def __init__(self, session: Session, storage: ObjectStorageClient) -> None:
         self._session = session
-        self._redis = redis_client
+        self._storage = storage
 
     def register_document(
         self,
@@ -388,64 +428,90 @@ class KnowledgeService:
         filename: str,
         content_type: str,
         data: bytes,
-        source_uri: str | None = None,
-    ) -> db_models.KnowledgeSource:
+    ) -> KnowledgeRegistrationResult:
         brand = self._session.get(db_models.Brand, brand_id)
         if brand is None:
             raise NoResultFound(f"brand {brand_id} not found")
 
         checksum = sha256(data).hexdigest()
-        knowledge = db_models.KnowledgeSource(
+        existing = self._find_existing_knowledge(brand_id=brand_id, checksum=checksum, tolerate=True)
+        if existing is not None:
+            logger.info(
+                "using existing knowledge source for duplicate upload",
+                extra={"brand_id": str(brand_id), "knowledge_source_id": str(existing.id)},
+            )
+            return KnowledgeRegistrationResult(
+                knowledge=existing,
+                tenant_id=brand.tenant_id,
+                brand_id=brand_id,
+                filename=filename,
+                content_type=content_type,
+                source_uri=existing.source_uri,
+                should_enqueue=False,
+            )
+
+        knowledge_id = uuid4()
+        upload = self._storage.upload_document(
+            tenant_id=brand.tenant_id,
             brand_id=brand_id,
-            source_uri=source_uri or filename,
+            knowledge_id=knowledge_id,
+            filename=filename,
+            content_type=content_type,
+            data=data,
+        )
+
+        knowledge = db_models.KnowledgeSource(
+            id=knowledge_id,
+            brand_id=brand_id,
+            source_uri=upload.uri,
             asset_type=self._infer_asset_type(content_type),
             checksum=checksum,
             status=KnowledgeSourceStatus.PENDING,
-            metadata_json={"filename": filename},
+            metadata_json={"filename": upload.filename, "storage_key": upload.key},
         )
         self._session.add(knowledge)
         try:
             self._session.flush()
         except IntegrityError:
             self._session.rollback()
-            knowledge = self._find_existing_knowledge(brand_id=brand_id, checksum=checksum)
+            existing = self._find_existing_knowledge(brand_id=brand_id, checksum=checksum)
             logger.info(
-                "using existing knowledge source for duplicate upload",
-                extra={"brand_id": str(brand_id), "knowledge_source_id": str(knowledge.id)},
+                "using existing knowledge source for duplicate upload after flush",
+                extra={"brand_id": str(brand_id), "knowledge_source_id": str(existing.id)},
+            )
+            return KnowledgeRegistrationResult(
+                knowledge=existing,
+                tenant_id=brand.tenant_id,
+                brand_id=brand_id,
+                filename=filename,
+                content_type=content_type,
+                source_uri=existing.source_uri,
+                should_enqueue=False,
             )
         except Exception:
             self._session.rollback()
             raise
 
-        self._enqueue_ingestion_job(knowledge_id=knowledge.id, brand_id=brand_id, filename=filename)
-        return knowledge
+        return KnowledgeRegistrationResult(
+            knowledge=knowledge,
+            tenant_id=brand.tenant_id,
+            brand_id=brand_id,
+            filename=upload.filename,
+            content_type=content_type,
+            source_uri=upload.uri,
+        )
 
     def _find_existing_knowledge(
-        self, *, brand_id: UUID, checksum: str
-    ) -> db_models.KnowledgeSource:
+        self, *, brand_id: UUID, checksum: str, tolerate: bool = False
+    ) -> db_models.KnowledgeSource | None:
         statement = select(db_models.KnowledgeSource).where(
             db_models.KnowledgeSource.brand_id == brand_id,
             db_models.KnowledgeSource.checksum == checksum,
         )
         knowledge = self._session.exec(statement).first()
-        if knowledge is None:
+        if knowledge is None and not tolerate:
             raise NoResultFound("expected duplicate knowledge source to exist")
         return knowledge
-
-    def _enqueue_ingestion_job(self, *, knowledge_id: UUID, brand_id: UUID, filename: str) -> None:
-        if self._redis is None:
-            logger.debug("skipping ingestion enqueue; redis client not configured")
-            return
-        raw_payload = {
-            "knowledge_source_id": str(knowledge_id),
-            "brand_id": str(brand_id),
-            "filename": filename,
-        }
-        payload = cast(dict[Any, Any], raw_payload)
-        try:
-            self._redis.xadd("ingestion:queue", payload)
-        except Exception:  # pragma: no cover - redis failures shouldn't break uploads
-            logger.exception("failed to enqueue knowledge ingestion job")
 
     @staticmethod
     def _infer_asset_type(content_type: str) -> str:

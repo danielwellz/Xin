@@ -12,8 +12,9 @@ from sqlalchemy.exc import NoResultFound
 from chatbot.core.http import ResponseEnvelope
 
 from .. import schemas
-from ..dependencies import get_knowledge_service
+from ..dependencies import get_ingestion_job_publisher, get_knowledge_service
 from ..services import KnowledgeService
+from ..tasks import IngestionJobPublisher
 
 router = APIRouter(prefix="/v1/brands", tags=["knowledge"])
 
@@ -33,6 +34,9 @@ async def upload_knowledge_document(
     brand_id: UUID,
     file: Annotated[UploadFile, File(...)],
     knowledge_service: Annotated[KnowledgeService, Depends(get_knowledge_service)],
+    ingestion_publisher: Annotated[
+        IngestionJobPublisher, Depends(get_ingestion_job_publisher)
+    ],
 ) -> ResponseEnvelope[schemas.KnowledgeUploadResponse]:
     """Stage an uploaded document for ingestion into the knowledge base."""
 
@@ -50,19 +54,22 @@ async def upload_knowledge_document(
     _ensure_text_extractable(content_type, data)
 
     try:
-        knowledge = knowledge_service.register_document(
+        registration = knowledge_service.register_document(
             brand_id=brand_id,
             filename=file.filename or "upload",
             content_type=content_type,
             data=data,
-            source_uri=file.filename or "upload",
         )
     except NoResultFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    if registration.should_enqueue:
+        await ingestion_publisher.enqueue_job(registration)
+
+    knowledge = registration.knowledge
     response = schemas.KnowledgeUploadResponse(
         knowledge_source_id=knowledge.id,
-        filename=file.filename or "upload",
+        filename=registration.filename,
         status=knowledge.status.value,
     )
     return ResponseEnvelope(data=response)

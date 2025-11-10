@@ -20,8 +20,35 @@ from chatbot.core.db import models as db_models
 from chatbot.core.db.session import init_db
 from chatbot.adapters.orchestrator import dependencies
 from chatbot.adapters.orchestrator.app import create_app
+from chatbot.core.storage import StorageUploadResult
 
 pytestmark = pytest.mark.integration
+
+
+class StubStorageClient:
+    def __init__(self) -> None:
+        self.uploads: list[tuple[str, str]] = []
+
+    def upload_document(self, **kwargs):
+        tenant_id = kwargs["tenant_id"]
+        brand_id = kwargs["brand_id"]
+        knowledge_id = kwargs["knowledge_id"]
+        filename = kwargs.get("filename") or "upload"
+        key = f"{tenant_id}/{brand_id}/{knowledge_id}/{filename}"
+        self.uploads.append((str(knowledge_id), key))
+        return StorageUploadResult(uri=f"s3://test/{key}", key=key, filename=filename)
+
+
+class StubIngestionPublisher:
+    def __init__(self) -> None:
+        self.jobs: list[object] = []
+
+    async def enqueue_job(self, registration):
+        self.jobs.append(registration)
+        return str(registration.knowledge.id)
+
+    async def close(self) -> None:
+        return None
 
 
 @pytest.fixture(scope="session")
@@ -118,6 +145,8 @@ def test_client(
     dependencies.get_redis_client.cache_clear()
     dependencies.get_llm_client.cache_clear()
     dependencies.get_guardrail_service.cache_clear()
+    dependencies.get_storage_client.cache_clear()
+    dependencies.get_ingestion_job_publisher.cache_clear()
 
     # Flush any existing engines created with prior settings.
     from chatbot.core.db import session as db_session_module
@@ -125,8 +154,17 @@ def test_client(
     db_session_module._ENGINE_CACHE.clear()  # type: ignore[attr-defined]
 
     app = create_app()
+    storage_stub = StubStorageClient()
+    ingestion_stub = StubIngestionPublisher()
+    app.dependency_overrides[dependencies.get_storage_client] = lambda: storage_stub
+    app.dependency_overrides[
+        dependencies.get_ingestion_job_publisher
+    ] = lambda: ingestion_stub
+    app.state.test_storage = storage_stub
+    app.state.test_ingestion_publisher = ingestion_stub
     client = TestClient(app)
     yield client
+    app.dependency_overrides.clear()
     client.close()
 
 
@@ -242,9 +280,11 @@ def test_upload_knowledge_creates_source_and_enqueues_job(
         assert knowledge is not None
         assert knowledge.status == db_models.KnowledgeSourceStatus.PENDING
 
-    redis_client = _redis()
-    entries = redis_client.xrange("ingestion:queue")
-    assert entries, "expected ingestion job in redis stream"
+    storage_stub: StubStorageClient = test_client.app.state.test_storage
+    ingestion_stub: StubIngestionPublisher = test_client.app.state.test_ingestion_publisher
+    assert storage_stub.uploads, "expected object storage upload"
+    assert ingestion_stub.jobs, "expected ingestion job to be enqueued"
+    assert str(ingestion_stub.jobs[0].knowledge.id) == knowledge_id
 
 
 def test_get_conversation_returns_history(

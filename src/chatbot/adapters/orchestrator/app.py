@@ -18,7 +18,7 @@ from chatbot.core.telemetry import (
     parse_exporter_headers,
 )
 
-from .dependencies import get_settings
+from .dependencies import get_ingestion_job_publisher, get_settings
 from .routers import conversations, knowledge, messages
 
 logger = logging.getLogger(__name__)
@@ -63,5 +63,10 @@ def create_app() -> FastAPI:
     @app.get("/metrics")
     async def metrics() -> Response:
         return metrics_response()
+
+    @app.on_event("shutdown")
+    async def shutdown_ingestion_queue() -> None:
+        publisher = get_ingestion_job_publisher()
+        await publisher.close()
 
     return app

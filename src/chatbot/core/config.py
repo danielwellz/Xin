@@ -181,6 +181,42 @@ class TelemetrySettings(BaseAppSettings):
     metrics_port: int | None = None
 
 
+class StorageSettings(BaseAppSettings):
+    """Object storage configuration for knowledge uploads."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="storage_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    endpoint_url: str = "http://localhost:9000"
+    bucket: str = "knowledge"
+    access_key: str = "minio"
+    secret_key: str = "minio123"
+    region: str = "us-east-1"
+
+
+class IngestionQueueSettings(BaseAppSettings):
+    """Redis connection details for the ingestion worker queue."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="ingest_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    redis_host: str = "localhost"
+    redis_port: int = Field(default=6379, ge=1, le=65535)
+    redis_db: int = Field(default=0, ge=0)
+    redis_password: str | None = None
+    queue_name: str = "ingestion"
+
+
 class AppSettings(BaseAppSettings):
     """Top level settings object used by services."""
 
@@ -191,6 +227,8 @@ class AppSettings(BaseAppSettings):
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
+    storage: StorageSettings = Field(default_factory=StorageSettings)
+    ingestion_queue: IngestionQueueSettings = Field(default_factory=IngestionQueueSettings)
 
     @classmethod
     def load(cls, **kwargs: Any) -> AppSettings:
