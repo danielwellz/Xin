@@ -24,3 +24,4 @@ jobs:
             docker compose --env-file ../config/compose.env build
             docker compose up -d
             docker system prune -f
+            
