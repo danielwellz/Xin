@@ -3,49 +3,61 @@ version: "3.9"
 services:
   postgres:
     image: postgres:15-alpine
+    container_name: xin_postgres
     environment:
       POSTGRES_DB: chatbot
       POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: chatbot
+      POSTGRES_PASSWORD: Danial1380@$
+    volumes:
+      - ../volumes/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    restart: always
 
   redis:
     image: redis:7-alpine
+    container_name: xin_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ../volumes/redis:/data
     ports:
       - "6379:6379"
+    restart: always
 
   qdrant:
     image: qdrant/qdrant:v1.5.1
+    container_name: xin_qdrant
+    volumes:
+      - ../volumes/qdrant:/qdrant/storage
     ports:
       - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
+    restart: always
 
   minio:
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    container_name: xin_minio
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-    command: server /data --console-address :9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - ../volumes/minio:/data
     ports:
       - "9000:9000"
       - "9001:9001"
-    volumes:
-      - minio_data:/data
+    restart: always
 
   orchestrator:
     build:
       context: .
       dockerfile: services/orchestrator/Dockerfile
+    container_name: xin_orchestrator
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DATABASE: chatbot
       POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: chatbot
+      POSTGRES_PASSWORD: Danial1380@$
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ""
@@ -63,13 +75,16 @@ services:
       - postgres
       - redis
       - qdrant
+      - minio
     ports:
       - "8000:8000"
+    restart: on-failure
 
   channel_gateway:
     build:
       context: .
       dockerfile: services/channel_gateway/Dockerfile
+    container_name: xin_channel_gateway
     environment:
       GATEWAY_ORCHESTRATOR_URL: http://orchestrator:8000
       GATEWAY_INSTAGRAM_SECRET: dev-instagram
@@ -89,17 +104,19 @@ services:
       - redis
     ports:
       - "8080:8080"
+    restart: on-failure
 
   ingestion_worker:
     build:
       context: .
       dockerfile: services/ingestion_worker/Dockerfile
+    container_name: xin_ingestion_worker
     environment:
       INGEST_REDIS_HOST: redis
       INGEST_REDIS_PORT: 6379
       INGEST_REDIS_DB: 0
       INGEST_REDIS_PASSWORD: ""
-      INGEST_POSTGRES_DSN: postgresql://chatbot:chatbot@postgres:5432/chatbot
+      INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@$@postgres:5432/chatbot
       INGEST_MINIO_ENDPOINT_URL: http://minio:9000
       INGEST_MINIO_ACCESS_KEY: minio
       INGEST_MINIO_SECRET_KEY: minio123
@@ -112,8 +129,10 @@ services:
       - postgres
       - minio
       - qdrant
+    restart: on-failure
 
 volumes:
   postgres_data:
+  redis_data:
   qdrant_data:
   minio_data:
