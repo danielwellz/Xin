@@ -1,27 +1,37 @@
 name: Deploy to VPS
-
 on:
   push:
-    branches: [ "main" ]  # or "master" if your repo uses that
+    branches: [ "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy via SSH
+      - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          port: ${{ secrets.VPS_PORT }}
+          host: 87.107.105.19
+          username: xin
+          port: 9011
           key: ${{ secrets.VPS_KEY }}
           script: |
             cd /opt/xin-chatbot/src
-            git pull
-            docker compose --env-file ../config/compose.env build
-            docker compose up -d
-            docker system prune -f
-            
+            echo "Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Building and restarting containers..."
+            docker compose --env-file ../config/compose.env pull
+            docker compose --env-file ../config/compose.env build --pull
+            docker compose --env-file ../config/compose.env up -d --remove-orphans
+
+            echo "Checking service health..."
+            sleep 10
+            curl -sf http://127.0.0.1:8000/health || echo "⚠️ Orchestrator not responding"
+            curl -sf http://127.0.0.1:8080/health || echo "⚠️ Channel Gateway not responding"
+
+            echo "✅ Deployment complete!"
