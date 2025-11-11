@@ -127,7 +127,6 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     redis_client: Redis | None = ctx.get("redis")
     if redis_client:
         await redis_client.close()
-        await redis_client.wait_closed()
 
 
 async def process_knowledge_ingest(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str, str]:

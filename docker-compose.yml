@@ -53,6 +53,7 @@ services:
       dockerfile: services/orchestrator/Dockerfile
     container_name: xin_orchestrator
     environment:
+      PYTHONPATH: /app/src
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DATABASE: chatbot
