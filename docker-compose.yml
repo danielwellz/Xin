@@ -117,7 +117,7 @@ services:
       INGEST_REDIS_PORT: 6379
       INGEST_REDIS_DB: 0
       INGEST_REDIS_PASSWORD: ""
-      INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@$@postgres:5432/chatbot
+      INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@postgres:5432/chatbot
       INGEST_MINIO_ENDPOINT_URL: http://minio:9000
       INGEST_MINIO_ACCESS_KEY: minio
       INGEST_MINIO_SECRET_KEY: minio123
