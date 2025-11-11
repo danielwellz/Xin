@@ -25,12 +25,12 @@ orchestrator:
     POSTGRES_PORT: "5432"
     POSTGRES_DATABASE: chatbot
     POSTGRES_USER: chatbot
-    POSTGRES_PASSWORD: chatbot
+    POSTGRES_PASSWORD: Danial1380
     REDIS_URL: redis://redis:6379/0
     QDRANT_URL: http://qdrant:6333
     STORAGE_ENDPOINT_URL: http://minio:9000
     STORAGE_ACCESS_KEY: minio
-    STORAGE_SECRET_KEY: minio123
+    STORAGE_SECRET_KEY: Danial1380@$
     STORAGE_REGION: us-east-1
     STORAGE_BUCKET: brand-knowledge
     INGEST_REDIS_HOST: redis
@@ -77,10 +77,10 @@ ingestionWorker:
     INGEST_REDIS_HOST: redis
     INGEST_REDIS_PORT: "6379"
     INGEST_REDIS_DB: "0"
-    INGEST_POSTGRES_DSN: postgresql://chatbot:chatbot@postgres:5432/chatbot
+    INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@postgres:5432/chatbot
     INGEST_MINIO_ENDPOINT_URL: http://minio:9000
     INGEST_MINIO_ACCESS_KEY: minio
-    INGEST_MINIO_SECRET_KEY: minio123
+    INGEST_MINIO_SECRET_KEY: Danial1380@$
     INGEST_QDRANT_URL: http://qdrant:6333
   secretRefs: []
   resources: {}

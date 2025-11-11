@@ -38,7 +38,7 @@ services:
     container_name: xin_minio
     environment:
       MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+      MINIO_ROOT_PASSWORD: Danial1380@$
     command: server /data --console-address ":9001"
     volumes:
       - ../volumes/minio:/data
@@ -58,13 +58,13 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DATABASE: chatbot
       POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: Danial1380@$
+      POSTGRES_PASSWORD: Danial1380
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ""
       STORAGE_ENDPOINT_URL: http://minio:9000
       STORAGE_ACCESS_KEY: minio
-      STORAGE_SECRET_KEY: minio123
+      STORAGE_SECRET_KEY: Danial1380@$
       STORAGE_REGION: us-east-1
       STORAGE_BUCKET: brand-knowledge
       INGEST_REDIS_HOST: redis
@@ -120,7 +120,7 @@ services:
       INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@postgres:5432/chatbot
       INGEST_MINIO_ENDPOINT_URL: http://minio:9000
       INGEST_MINIO_ACCESS_KEY: minio
-      INGEST_MINIO_SECRET_KEY: minio123
+      INGEST_MINIO_SECRET_KEY: Danial1380@$
       INGEST_QDRANT_URL: http://qdrant:6333
       INGEST_QDRANT_API_KEY: ""
       INGEST_REDIS_QUEUE_NAME: ingestion

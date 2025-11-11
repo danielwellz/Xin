@@ -33,7 +33,7 @@ jobs:
         image: minio/minio:RELEASE.2024-01-16T16-07-38Z
         env:
           MINIO_ROOT_USER: minio
-          MINIO_ROOT_PASSWORD: minio123
+          MINIO_ROOT_PASSWORD: Danial1380@$
         command: server /data
         ports:
           - 9000:9000
@@ -71,12 +71,12 @@ jobs:
           POSTGRES_PORT: 5432
           POSTGRES_DATABASE: chatbot
           POSTGRES_USER: chatbot
-          POSTGRES_PASSWORD: chatbot
+          POSTGRES_PASSWORD: Danial1380
           REDIS_URL: redis://localhost:6379/0
           QDRANT_URL: http://localhost:6333
           MINIO_ENDPOINT_URL: http://localhost:9000
           MINIO_ACCESS_KEY: minio
-          MINIO_SECRET_KEY: minio123
+          MINIO_SECRET_KEY: Danial1380@$
         run: make verify
 
   migrations:
@@ -89,13 +89,13 @@ jobs:
         env:
           POSTGRES_DB: chatbot
           POSTGRES_USER: chatbot
-          POSTGRES_PASSWORD: chatbot
+          POSTGRES_PASSWORD: Danial1380
         ports:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U chatbot -d chatbot" --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      DATABASE_URL: postgresql://chatbot:chatbot@localhost:5432/chatbot
+      DATABASE_URL: postgresql://chatbot:Danial1380@localhost:5432/chatbot
       PGPASSWORD: chatbot
     steps:
       - uses: actions/checkout@v4

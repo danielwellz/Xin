@@ -195,7 +195,7 @@ class StorageSettings(BaseAppSettings):
     endpoint_url: str = "http://localhost:9000"
     bucket: str = "knowledge"
     access_key: str = "minio"
-    secret_key: str = "minio123"
+    secret_key: str = "Danial1380@$"
     region: str = "us-east-1"
 
 
