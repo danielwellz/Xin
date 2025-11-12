@@ -30,9 +30,11 @@ def _build_queue_config(settings: IngestionQueueSettings) -> QueueConfig:
         port=settings.redis_port,
         database=settings.redis_db,
         password=settings.redis_password,
+    )
+    return QueueConfig(
+        redis=redis_settings,
         queue_name=settings.queue_name,
     )
-    return QueueConfig(redis_settings=redis_settings)
 
 
 class IngestionJobPublisher:
