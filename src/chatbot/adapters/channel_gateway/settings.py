@@ -19,7 +19,9 @@ class RedisSettings(BaseModel):
 class ChannelGatewaySettings(BaseSettings):
     """Top-level configuration loaded from environment."""
 
-    model_config = SettingsConfigDict(env_prefix="GATEWAY_", env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_prefix="GATEWAY_", env_file=".env", case_sensitive=False
+    )
 
     app_version: str = "0.1.0"
     orchestrator_url: AnyHttpUrl = "http://localhost:8001"

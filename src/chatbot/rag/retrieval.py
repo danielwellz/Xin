@@ -29,7 +29,8 @@ def initialize_brand_knowledge(
 
     namespace = _namespace(tenant_id, brand_id)
     logger.info(
-        "initializing brand knowledge", extra={"namespace": namespace, "count": len(chunks)}
+        "initializing brand knowledge",
+        extra={"namespace": namespace, "count": len(chunks)},
     )
     vector_store.delete_namespace(namespace)
     _store_chunks(
@@ -53,7 +54,10 @@ def refresh_brand_knowledge(
     """Refresh brand knowledge while preserving prior chunks."""
 
     namespace = _namespace(tenant_id, brand_id)
-    logger.info("refreshing brand knowledge", extra={"namespace": namespace, "count": len(chunks)})
+    logger.info(
+        "refreshing brand knowledge",
+        extra={"namespace": namespace, "count": len(chunks)},
+    )
     _store_chunks(
         namespace,
         tenant_id=tenant_id,
@@ -112,7 +116,8 @@ def _store_chunks(
 ) -> None:
     if not chunks:
         logger.warning(
-            "no chunks provided; skipping knowledge update", extra={"namespace": namespace}
+            "no chunks provided; skipping knowledge update",
+            extra={"namespace": namespace},
         )
         return
 

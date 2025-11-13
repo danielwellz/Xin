@@ -1,0 +1,46 @@
+{
+  "name": "@xin-platform/widget-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/xin-widget.umd.cjs",
+  "module": "dist/xin-widget.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/xin-widget.es.js",
+      "require": "./dist/xin-widget.umd.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.es.js",
+      "require": "./dist/react.umd.cjs"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "build:report": "VITE_BUNDLE_REPORT=true vite build",
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "lint": "tsc --noEmit",
+    "check": "pnpm lint && pnpm test && pnpm build:report"
+  },
+  "peerDependencies": {
+    "react": ">=18.2.0",
+    "react-dom": ">=18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.7",
+    "@types/react-dom": "^18.3.2",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^1.6.0",
+    "rollup-plugin-visualizer": "^5.12.0"
+  }
+}

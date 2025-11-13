@@ -14,15 +14,21 @@ class MarkdownNormalizer:
     def __init__(self, *, transform: Callable[[str], str] | None = None) -> None:
         self._transform = transform or (lambda text: text)
 
-    def normalize(self, job: KnowledgeIngestJob, document: FetchedDocument) -> NormalizedDocument:
+    def normalize(
+        self, job: KnowledgeIngestJob, document: FetchedDocument
+    ) -> NormalizedDocument:
         try:
             text = document.raw_bytes.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise NormalizationError("document is not valid UTF-8", retryable=False) from exc
+            raise NormalizationError(
+                "document is not valid UTF-8", retryable=False
+            ) from exc
 
         text = self._transform(text).strip()
         if not text:
-            raise NormalizationError("document is empty after normalization", retryable=False)
+            raise NormalizationError(
+                "document is empty after normalization", retryable=False
+            )
 
         metadata = {
             "tenant_id": job.tenant_id,
@@ -30,4 +36,6 @@ class MarkdownNormalizer:
             "source_uri": job.source_uri,
             **{key: str(value) for key, value in document.metadata.items()},
         }
-        return NormalizedDocument(document_id=document.document_id, text=text, metadata=metadata)
+        return NormalizedDocument(
+            document_id=document.document_id, text=text, metadata=metadata
+        )

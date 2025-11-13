@@ -1,0 +1,24 @@
+{{- if .Values.channelGateway.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-channel-gateway
+  labels:
+    app.kubernetes.io/name: channel-gateway
+    app.kubernetes.io/component: channel-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "xin-platform.fullname" . }}-channel-gateway
+  minReplicas: {{ .Values.channelGateway.hpa.minReplicas }}
+  maxReplicas: {{ .Values.channelGateway.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.channelGateway.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

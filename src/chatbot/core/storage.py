@@ -103,3 +103,28 @@ class ObjectStorageClient:
         candidate = filename or "upload"
         cleaned = _FILENAME_PATTERN.sub("_", candidate).strip("._")
         return cleaned or "upload"
+
+    def store_secret_blob(
+        self,
+        *,
+        key: str,
+        data: bytes,
+        content_type: str = "application/json",
+    ) -> str:
+        """Persist a sensitive payload and return its URI reference."""
+
+        try:
+            self._client.put_object(
+                Bucket=self._settings.bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
+        except (BotoCoreError, ClientError):
+            logger.exception(
+                "failed to store secret blob in object storage",
+                extra={"key": key},
+            )
+            raise
+
+        return f"s3://{self._settings.bucket}/{key}"

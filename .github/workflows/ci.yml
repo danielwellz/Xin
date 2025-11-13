@@ -5,173 +5,78 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
 
 jobs:
-  verify:
-    name: Verify (lint, typecheck, tests, coverage)
+  backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: chatbot
-          POSTGRES_USER: chatbot
-          POSTGRES_PASSWORD: chatbot
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U chatbot -d chatbot" --health-interval 10s --health-timeout 5s --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-      qdrant:
-        image: qdrant/qdrant:v1.5.1
-        ports:
-          - 6333:6333
-      minio:
-        image: minio/minio:RELEASE.2024-01-16T16-07-38Z
-        env:
-          MINIO_ROOT_USER: minio
-          MINIO_ROOT_PASSWORD: Danial1380@$
-        command: server /data
-        ports:
-          - 9000:9000
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: "1.7.1"
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry and virtualenv
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            .venv
-          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            poetry-${{ runner.os }}-
-
+        run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --no-root
+        run: poetry install
+      - name: Backend lint/tests/coverage
+        run: make lint typecheck coverage prompt-check test-contract
 
-      - name: Run make verify
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: chatbot
-          POSTGRES_USER: chatbot
-          POSTGRES_PASSWORD: Danial1380
-          REDIS_URL: redis://localhost:6379/0
-          QDRANT_URL: http://localhost:6333
-          MINIO_ENDPOINT_URL: http://localhost:9000
-          MINIO_ACCESS_KEY: minio
-          MINIO_SECRET_KEY: Danial1380@$
-        run: make verify
-
-  migrations:
-    name: Migration smoke test
-    needs: verify
+  frontend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: chatbot
-          POSTGRES_USER: chatbot
-          POSTGRES_PASSWORD: Danial1380
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U chatbot -d chatbot" --health-interval 10s --health-timeout 5s --health-retries 5
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install frontend deps
+        run: pnpm --prefix services/frontend install
+      - name: Frontend lint/tests/e2e
+        run: |
+          pnpm --prefix services/frontend lint
+          pnpm --prefix services/frontend test
+          pnpm --prefix services/frontend e2e -- --headless
+
+  widget:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install widget deps
+        run: pnpm --prefix services/widget install
+      - name: Widget tests + build
+        run: |
+          pnpm --prefix services/widget test
+          pnpm --prefix services/widget build
+
+  nightly-demo:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, widget]
     env:
-      DATABASE_URL: postgresql://chatbot:Danial1380@localhost:5432/chatbot
-      PGPASSWORD: chatbot
+      ADMIN_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: "1.7.1"
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry and virtualenv
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            .venv
-          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            poetry-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-
-      - name: Install Postgres client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Wait for Postgres
-        run: |
-          for i in {1..10}; do
-            if pg_isready -h localhost -p 5432 -d chatbot -U chatbot; then
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Postgres service did not become ready in time" >&2
-          exit 1
-
-      - name: Apply migrations
-        run: poetry run alembic upgrade head
-
-      - name: Roll back last migration
-        run: poetry run alembic downgrade -1
-
-  docker-build:
-    needs: verify
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service:
-          - name: orchestrator
-            dockerfile: services/orchestrator/Dockerfile
-            image: orchestrator-ci
-          - name: channel-gateway
-            dockerfile: services/channel_gateway/Dockerfile
-            image: channel-gateway-ci
-          - name: ingestion-worker
-            dockerfile: services/ingestion_worker/Dockerfile
-            image: ingestion-worker-ci
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build ${{ matrix.service.name }} image
-        run: |
-          docker build -f ${{ matrix.service.dockerfile }} -t ${{ matrix.service.image }}:${{ github.sha }} .
-
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@v0.14.0
-        with:
-          image-ref: ${{ matrix.service.image }}:${{ github.sha }}
-          format: table
-          exit-code: "1"
-          vuln-type: os,library
-          ignore-unfixed: true
+        run: pip install poetry
+      - name: Install deps
+        run: poetry install
+      - name: Seed demo environment
+        run: make demo

@@ -6,7 +6,11 @@ from typing import Any
 import pytest
 
 from chatbot.core import telemetry
-from chatbot.core.telemetry import init_tracing, is_tracing_enabled, parse_exporter_headers
+from chatbot.core.telemetry import (
+    init_tracing,
+    is_tracing_enabled,
+    parse_exporter_headers,
+)
 
 pytestmark = pytest.mark.unit
 

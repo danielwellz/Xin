@@ -61,23 +61,30 @@ class MinioDocumentFetcher:
                             metadata={
                                 "bucket": bucket,
                                 "object_key": key,
-                                "content_type": response.get("ContentType") or job.content_type,
+                                "content_type": response.get("ContentType")
+                                or job.content_type,
                             },
                         )
                     )
         except (ClientError, BotoCoreError) as exc:
-            raise FetchError("failed to fetch object from MinIO", retryable=True) from exc
+            raise FetchError(
+                "failed to fetch object from MinIO", retryable=True
+            ) from exc
         except asyncio.CancelledError:  # pragma: no cover - propagation
             raise
         except Exception as exc:  # pragma: no cover - defensive fallback
-            raise FetchError("unexpected error fetching from MinIO", retryable=True) from exc
+            raise FetchError(
+                "unexpected error fetching from MinIO", retryable=True
+            ) from exc
 
         return documents
 
     def _extract_object_uris(self, job: KnowledgeIngestJob) -> Sequence[str]:
         metadata = job.metadata or {}
         extra_objects = metadata.get("source_objects")
-        if isinstance(extra_objects, Sequence) and not isinstance(extra_objects, str | bytes):
+        if isinstance(extra_objects, Sequence) and not isinstance(
+            extra_objects, str | bytes
+        ):
             return [str(uri) for uri in extra_objects]
         return [job.source_uri]
 

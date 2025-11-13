@@ -1,119 +1,65 @@
-# Architecture Overview
+# Xin ChatBot Architecture
 
-This document summarizes the end-to-end architecture for the business messaging assistant. The system is designed as a multi-tenant, multi-channel platform that ingests brand knowledge, retrieves context through RAG, and responds autonomously to customer messages.
+## 1. System Overview
+Xin ChatBot is composed of a stateless API surface backed by a streaming orchestrator, channel adapters, a retrieval-augmented generation (RAG) pipeline, and background workers for ingestion plus automation. The system is deployed as a set of containers or services communicating over an internal event bus (Redis/Kafka) and persisting canonical state in Postgres and Qdrant.
 
-## Context Diagram
-
-```mermaid
-graph TD
-  subgraph Channels
-    IG[Instagram API]
-    WA[WhatsApp Business API]
-    TG[Telegram Bot API]
-    WEB[Web Chat Widget]
-  end
-
-  subgraph Platform
-    CG[Channel Gateway]
-    ORCH[Orchestrator Service]
-    ING[Ingestion Worker]
-    QD[Qdrant Vector DB]
-    PG[(Postgres)]
-    RD[(Redis Streams)]
-  end
-
-  subgraph External
-    LLM[LLM Provider<br/>(OpenAI/OpenRouter)]
-    S3[(Object Storage)]
-    CRM[Customer Systems]
-  end
-
-  IG --> CG
-  WA --> CG
-  TG --> CG
-  WEB --> CG
-
-  CG --> ORCH
-  ORCH --> RD
-  ORCH --> PG
-  ORCH --> LLM
-  ORCH --> QD
-
-  ING --> QD
-  ING --> PG
-  ING --> RD
-  S3 --> ING
-  ORCH --> CRM
+```
+Clients → Channel Gateway → Orchestrator API → Policy Engine → LLM + RAG → Response
+                                     ↘ Automation Workers ↙
+                                     ↘ Analytics + Alerts ↙
 ```
 
-## Component Summary
+## 2. Core Services
+| Service | Responsibilities | Tech Highlights |
+| --- | --- | --- |
+| `xin_orchestrator` | HTTP + gRPC entry point, tenant-aware routing, policy evaluation | FastAPI, Pydantic, JWT auth |
+| `xin_channel_gateway` | Normalizes inbound events from Instagram, Telegram, WhatsApp, Web widget | Asyncio workers, signed webhooks |
+| `xin_rag_worker` | Chunking, embedding, storage, retrieval scoring | Sentence Transformers/OpenAI, Qdrant |
+| `xin_ingestion_worker` | File ingestion queue, OCR, metadata extraction | Celery + Redis |
+| `xin_automation_worker` | Schedules follow-ups, escalations, CRM pushes | APScheduler |
+| `xin_frontend` | Operator console + embed widget (React, optional) | Vite + Tailwind |
 
-- **Channel Gateway**: Webhooks/services per channel that normalize provider payloads into internal `InboundMessage` events, validate signatures, and push outbound responses through provider SDKs. Connected via Redis streams for async delivery.
-- **Orchestrator Service**: FastAPI application handling inbound message processing, conversation state management, RAG retrieval, LLM prompt orchestration, guardrails, and automation hooks. Persist conversation context to Postgres.
-- **Ingestion Worker**: Async worker that processes brand knowledge ingestion jobs, performs document normalization/chunking, generates embeddings, and writes vectors to Qdrant. Tracks job state in Postgres and emits progress notifications.
-- **Vector Store (Qdrant)**: Stores per-tenant embeddings with metadata filters (persona tone, product category). Enables similarity search during conversation flows.
-- **LLM Provider**: Managed API (OpenAI/OpenRouter) used for response generation. The orchestrator crafts persona-aware prompts that combine channel history with retrieved knowledge snippets.
+## 3. Data Flow
+1. **Inbound Event**: Channels POST to `/webhooks/<channel>` on the gateway.
+2. **Normalization**: Gateway converts payloads into `ChatEvent` dataclasses and publishes to Redis streams.
+3. **Orchestration**: API layer consumes events, loads tenant + channel config, and invokes the policy engine.
+4. **Knowledge Retrieval**: Policy engine queries Qdrant using embeddings pulled from ingestion jobs.
+5. **Response Generation**: LLM provider (OpenAI or local) is prompted with retrieved context plus policies.
+6. **Dispatch**: Generated reply is pushed back through the gateway to the originating channel; transcripts are
+   persisted in Postgres with a vector copy in Qdrant for analytics.
 
-## Request Lifecycle
+## 4. Storage & Configuration
+- **Postgres** — tenants, channels, conversation transcripts, automation states.
+- **Qdrant** — vector store keyed by tenant, supports hybrid BM25 + dense retrieval.
+- **Redis** — rate limiting, stream bus, cache of tenant feature flags.
+- **Object Storage (S3/MinIO)** — uploaded documents, media, and backups.
+- **Secrets** — stored in `.env` per environment; production uses Vault-compatible secret mounts.
 
-1. Customer sends a message on any supported channel.
-2. Channel gateway receives webhook, transforms payload to `InboundMessage`, and forwards it to the orchestrator.
-3. Orchestrator loads brand configuration, pulls recent conversation history, and invokes `retrieve_context` against Qdrant using the message embedding.
-4. Orchestrator builds an LLM prompt (persona directives + conversation history + retrieved snippets) and queries the provider.
-5. Generated response runs through guardrails (content filters, escalation checks). Safe responses are logged to Postgres and emitted to Redis for delivery; unsafe responses are escalated to human review.
-6. Channel gateway consumes outbound events and posts messages back through the provider APIs.
+## 5. Security & Compliance
+- JWT-based admin API; per-tenant HMAC secrets for channel callbacks.
+- Pydantic validation for all inbound payloads, with redaction of PII in logs.
+- Audit log appended for every policy or automation change.
+- Network segmentation: public channels → gateway → private orchestrator subnet.
 
-## Knowledge Ingestion Flow
+## 6. Deployment Topology
+- **Local Dev**: Docker Compose, single-instance services sharing a dev Postgres and Qdrant.
+- **Staging**: Kubernetes namespace with horizontal pod autoscaling on orchestrator + gateway.
+- **Prod**: Multi-region active/standby; Postgres HA pair, Qdrant replicated, workers sharded by tenant.
 
-```mermaid
-sequenceDiagram
-  participant BrandOwner
-  participant Orchestrator
-  participant Redis as Redis Queue
-  participant Worker as Ingestion Worker
-  participant Storage as Object Storage
-  participant Qdrant
-  participant Postgres
+## 7. Observability
+- OpenTelemetry traces exported to Tempo.
+- Structured JSON logs with `tenant_id` and `channel_id` tags.
+- Prometheus metrics for request rate, latency, queue depth, ingestion lag, LLM token usage.
+- Grafana dashboards: API health, ingestion health, automation SLAs.
 
-  BrandOwner->>Orchestrator: Upload brand pack / knowledge sources
-  Orchestrator->>Storage: Store raw documents
-  Orchestrator->>Redis: Enqueue KnowledgeIngestJob
-  Redis-->>Worker: Dispatch job
-  Worker->>Storage: Fetch documents
-  Worker->>Worker: Normalize & chunk text
-  Worker->>Qdrant: Upsert vectors (tenant/brand namespace)
-  Worker->>Postgres: Update KnowledgeSource, status logs
-  Worker->>Redis: Publish progress events
-  Orchestrator->>BrandOwner: Emit ingestion status updates
-```
+## 8. Extensibility Notes
+- Add new channels by implementing `ChannelAdapter` under `src/chatbot/adapters/`.
+- Policy engine accepts plug-in evaluators (Python entry points) for custom tenant rules.
+- Retrieval pipeline can swap embeddings via `EmbeddingSettings` without reworking ingestion logic.
+- Frontend embed widget consumes `/embed.js?tenant_id=…` exposing minimal public surface.
 
-## Escalation Loop
-
-```mermaid
-flowchart LR
-  A[LLM Response Generated] --> B{Passes Guardrails?}
-  B -- Yes --> C[Send to Customer]
-  C --> D[Log Interaction]
-  B -- No --> E[Create Escalation Ticket]
-  E --> F[Notify Human Agent]
-  F --> G[Agent Response or Approval]
-  G -->|Approve| C
-  G -->|Override| H[Send Human Draft]
-  H --> D
-```
-
-Escalation triggers include policy violations, low confidence scores, or explicit action requests requiring authorization. Escalations are recorded in Postgres with audit metadata.
-
-## Data Persistence
-
-- **Postgres** holds tenant/brand configuration, conversation history, knowledge metadata, and job tracking.
-- **Redis Streams** enable back-pressure-friendly communication between orchestrator and channel adapters; Pub/Sub topics broadcast ingestion progress.
-- **Qdrant** stores embedding vectors with metadata filters to keep brand data isolated.
-- **Object Storage** retains original knowledge documents for reprocessing and compliance.
-
-## Operational Notes
-
-- Maintain namespace separation per tenant/brand across storage systems.
-- All services emit structured logs with correlation IDs to facilitate tracing across components.
-- Observability stack (OpenTelemetry + Prometheus) tracks end-to-end latency, LLM usage metrics, and ingestion throughput.
-- Disaster recovery relies on regular snapshots of Postgres/Qdrant and versioned storage of knowledge assets.
+## 9. Outstanding Gaps
+- Web widget auto-config generator still pending; currently manual snippet assembly.
+- Systemd + SSL automation (Certbot/ACME) needed for bare-metal installs.
+- Monitoring dashboard requires runbooks aligned with SLOs defined below.
+- Delivery coordination captured in `docs/delivery/integrated_plan.md`; keep it in sync with architecture deltas when closing each phase.

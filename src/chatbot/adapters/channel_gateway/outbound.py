@@ -75,7 +75,9 @@ class OutboundStreamConsumer:
                 for message_id, raw_fields in messages:
                     await self._process_entry(message_id, raw_fields)
 
-    async def _process_entry(self, message_id: str, raw_fields: Mapping[bytes, bytes]) -> None:
+    async def _process_entry(
+        self, message_id: str, raw_fields: Mapping[bytes, bytes]
+    ) -> None:
         try:
             response, channel_type = _decode_outbound_response(raw_fields)
             adapter = self._adapters.get(channel_type)
@@ -93,12 +95,13 @@ class OutboundStreamConsumer:
             await self._redis.xack(self._config.key, self._config.group, message_id)
         except Exception:  # pragma: no cover - defensive logging
             logger.exception(
-                "unexpected error processing outbound message", extra={"message_id": message_id}
+                "unexpected error processing outbound message",
+                extra={"message_id": message_id},
             )
 
 
 def _decode_outbound_response(
-    raw_fields: Mapping[bytes, bytes]
+    raw_fields: Mapping[bytes, bytes],
 ) -> tuple[OutboundResponse, ChannelType]:
     payload = {}
     for key, value in raw_fields.items():
@@ -106,7 +109,9 @@ def _decode_outbound_response(
 
     metadata = json.loads(payload.get("metadata", "{}"))
     channel_type_str = metadata.get("channel_type")
-    channel_type = ChannelType(channel_type_str) if channel_type_str else ChannelType.WEB
+    channel_type = (
+        ChannelType(channel_type_str) if channel_type_str else ChannelType.WEB
+    )
 
     created_at_str = payload.get("created_at")
     if created_at_str:

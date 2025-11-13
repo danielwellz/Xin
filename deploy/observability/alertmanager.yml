@@ -1,0 +1,12 @@
+route:
+  receiver: slack-webhook
+  group_by: ["alertname", "tenant_id"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+
+receivers:
+  - name: slack-webhook
+    webhook_configs:
+      - url: ${ALERT_WEBHOOK_URL:-http://host.docker.internal:18080/alerts}
+        send_resolved: true

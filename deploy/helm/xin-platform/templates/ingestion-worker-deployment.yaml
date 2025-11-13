@@ -30,11 +30,35 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+      volumes:
+        {{- if .Values.global.logging.sidecar.enabled }}
+        - name: app-logs
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.global.secrets.vault.enabled }}
+        - name: vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ required "global.secrets.vault.secretProviderClass is required when vault integration is enabled" .Values.global.secrets.vault.secretProviderClass | quote }}
+        {{- end }}
+      {{- end }}
       containers:
         - name: ingestion-worker
           image: "{{ .Values.ingestionWorker.image.repository }}:{{ default .Chart.AppVersion .Values.ingestionWorker.image.tag }}"
           imagePullPolicy: {{ .Values.ingestionWorker.image.pullPolicy }}
+          {{- if .Values.global.logging.sidecar.enabled }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -o pipefail
+              arq chatbot.adapters.ingestion.worker.WorkerSettings 2>&1 | tee /var/log/xin/app.log
+          {{- else }}
           command: ["arq", "chatbot.adapters.ingestion.worker.WorkerSettings"]
+          {{- end }}
           env:
             {{- range $key, $value := .Values.ingestionWorker.env }}
             - name: {{ $key }}
@@ -49,9 +73,46 @@ spec:
             - secretRef:
                 name: {{ . }}
             {{- end }}
+          {{- if .Values.ingestionWorker.probes.liveness }}
+          livenessProbe:
+            {{- toYaml .Values.ingestionWorker.probes.liveness | nindent 12 }}
+          {{- end }}
           {{- if .Values.ingestionWorker.resources }}
           resources: {{- toYaml .Values.ingestionWorker.resources | nindent 12 }}
           {{- end }}
+          {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+          volumeMounts:
+            {{- if .Values.global.logging.sidecar.enabled }}
+            - name: app-logs
+              mountPath: /var/log/xin
+            {{- end }}
+            {{- if .Values.global.secrets.vault.enabled }}
+            - name: vault-secrets
+              mountPath: /var/run/secrets/xin
+              readOnly: true
+            {{- end }}
+          {{- end }}
+        {{- if .Values.global.logging.sidecar.enabled }}
+        - name: ingestion-log-shipper
+          image: {{ .Values.global.logging.sidecar.image }}
+          args:
+            - "-i"
+            - "tail"
+            - "-p"
+            - "path=/var/log/xin/app.log"
+            - "-p"
+            - "refresh_interval=5"
+            - "-o"
+            - "loki"
+            - "-p"
+            - {{ printf "labels={app=\\\"%s\\\",component=\\\"ingestion\\\"}" (include "xin-platform.fullname" .) | quote }}
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/xin
+          {{- if .Values.global.logging.sidecar.resources }}
+          resources: {{- toYaml .Values.global.logging.sidecar.resources | nindent 12 }}
+          {{- end }}
+        {{- end }}
       {{- if .Values.ingestionWorker.nodeSelector }}
       nodeSelector: {{- toYaml .Values.ingestionWorker.nodeSelector | nindent 8 }}
       {{- end }}

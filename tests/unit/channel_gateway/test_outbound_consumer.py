@@ -5,7 +5,10 @@ from uuid import uuid4
 
 import pytest
 
-from chatbot.adapters.channel_gateway.outbound import OutboundStreamConsumer, RedisStreamConfig
+from chatbot.adapters.channel_gateway.outbound import (
+    OutboundStreamConsumer,
+    RedisStreamConfig,
+)
 from chatbot.core.domain import ChannelType
 
 pytestmark = pytest.mark.unit
@@ -50,7 +53,9 @@ async def test_process_entry_dispatches_to_provider():
         "content": "hello",
         "metadata": json.dumps({"channel_type": "instagram"}),
     }
-    fields = {key.encode("utf-8"): value.encode("utf-8") for key, value in payload.items()}
+    fields = {
+        key.encode("utf-8"): value.encode("utf-8") for key, value in payload.items()
+    }
 
     await consumer._process_entry(message_id, fields)
 
@@ -78,7 +83,9 @@ async def test_process_entry_acknowledges_unknown_channel():
         "content": "missing adapter",
         "metadata": json.dumps({"channel_type": "instagram"}),
     }
-    fields = {key.encode("utf-8"): value.encode("utf-8") for key, value in payload.items()}
+    fields = {
+        key.encode("utf-8"): value.encode("utf-8") for key, value in payload.items()
+    }
 
     await consumer._process_entry(message_id, fields)
 

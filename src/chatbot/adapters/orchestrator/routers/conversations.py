@@ -16,7 +16,10 @@ from ..services import ConversationService, convert_message_log
 
 router = APIRouter(prefix="/v1/conversations", tags=["conversations"])
 
-ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
+ConversationServiceDep = Annotated[
+    ConversationService, Depends(get_conversation_service)
+]
+
 
 @router.get(
     "/{conversation_id}",

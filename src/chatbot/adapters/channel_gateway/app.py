@@ -17,6 +17,7 @@ from chatbot.core.telemetry import (
 
 from .dependencies import get_orchestrator_client, get_settings
 from .routers import instagram, telegram, web, whatsapp
+
 logger = logging.getLogger(__name__)
 
 

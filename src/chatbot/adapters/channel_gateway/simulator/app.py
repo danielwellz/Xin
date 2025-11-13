@@ -22,7 +22,9 @@ FIXTURE_DIR = REPO_ROOT / "tests" / "unit" / "channel_gateway" / "fixtures"
 class SimulatorSettings(BaseSettings):
     """Environment for the simulator process."""
 
-    model_config = SettingsConfigDict(env_prefix="SIM_", env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_prefix="SIM_", env_file=".env", case_sensitive=False
+    )
 
     target_url: AnyHttpUrl = "http://localhost:8080"
 
@@ -42,7 +44,9 @@ async def list_scenarios() -> dict[str, list[str]]:
 async def trigger_callback(channel: str) -> dict[str, Any]:
     fixture_path = FIXTURE_DIR / f"{channel}_message.json"
     if not fixture_path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="fixture not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="fixture not found"
+        )
 
     payload = json.loads(fixture_path.read_text())
     headers = _build_headers(channel, payload)
@@ -72,7 +76,9 @@ def _channel_prefix(channel: str) -> str:
         "web": "webchat",
     }
     if channel not in mapping:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown channel")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="unknown channel"
+        )
     return mapping[channel]
 
 
@@ -98,7 +104,9 @@ def _build_headers(channel: str, payload: dict[str, Any]) -> dict[str, str]:
         ).hexdigest()
         headers["X-Webchat-Signature"] = digest
     else:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown channel")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="unknown channel"
+        )
 
     return headers
 
@@ -107,7 +115,10 @@ def main() -> None:
     import uvicorn
 
     uvicorn.run(
-        "chatbot.adapters.channel_gateway.simulator.app:app", host="127.0.0.1", port=8085, reload=False
+        "chatbot.adapters.channel_gateway.simulator.app:app",
+        host="127.0.0.1",
+        port=8085,
+        reload=False,
     )
 
 

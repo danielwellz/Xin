@@ -1,0 +1,62 @@
+groups:
+  - name: xin-slo-alarms
+    interval: 30s
+    rules:
+      - alert: ApiErrorBudgetBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{service="orchestrator",status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{service="orchestrator"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "API availability below 99.5% for 5m"
+          runbook: "docs/RUNBOOK.md#6-monitoring--alert-response"
+
+      - alert: ApiLatencyP95Breached
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_latency_seconds_bucket{service="orchestrator"}[5m])) by (le)
+          ) > 1.5
+        for: 10m
+        labels:
+          severity: high
+          slo: latency
+        annotations:
+          summary: "P95 latency above 1.5s for API"
+          runbook: "docs/RUNBOOK.md#6-monitoring--alert-response"
+
+      - alert: IngestionLagHigh
+        expr: max_over_time(ingestion_jobs_inflight[30m]) > 0
+        for: 10m
+        labels:
+          severity: high
+          slo: ingestion
+        annotations:
+          summary: "Ingestion jobs running >30m indicates lag beyond 10m target"
+          runbook: "docs/RUNBOOK.md#6-monitoring--alert-response"
+
+      - alert: AutomationBacklog
+        expr: max(automation_queue_depth) > 50
+        for: 10m
+        labels:
+          severity: high
+          slo: automation
+        annotations:
+          summary: "Automation queue depth exceeded 50 jobs"
+          runbook: "docs/RUNBOOK.md#6-monitoring--alert-response"
+
+      - alert: AutomationFailuresSpike
+        expr: increase(automation_failures_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: medium
+          slo: automation
+        annotations:
+          summary: "Automation failures detected in the last 10m"
+          runbook: "docs/RUNBOOK.md#6-monitoring--alert-response"

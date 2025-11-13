@@ -195,8 +195,25 @@ class StorageSettings(BaseAppSettings):
     endpoint_url: str = "http://localhost:9000"
     bucket: str = "knowledge"
     access_key: str = "minio"
-    secret_key: str = "Danial1380@$"
+    secret_key: str = "changeme-storage-secret"
     region: str = "us-east-1"
+
+
+class AdminAuthSettings(BaseAppSettings):
+    """JWT configuration for the admin API surface."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="admin_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    jwt_secret: str = "dev-admin-secret"
+    issuer: str = "xin-admin"
+    audience: str = "xin-platform"
+    access_token_ttl_minutes: int = Field(default=30, ge=5, le=1440)
 
 
 class IngestionQueueSettings(BaseAppSettings):
@@ -228,7 +245,10 @@ class AppSettings(BaseAppSettings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
-    ingestion_queue: IngestionQueueSettings = Field(default_factory=IngestionQueueSettings)
+    ingestion_queue: IngestionQueueSettings = Field(
+        default_factory=IngestionQueueSettings
+    )
+    admin_auth: AdminAuthSettings = Field(default_factory=AdminAuthSettings)
 
     @classmethod
     def load(cls, **kwargs: Any) -> AppSettings:

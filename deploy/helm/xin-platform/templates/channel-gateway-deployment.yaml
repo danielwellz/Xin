@@ -28,15 +28,39 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ .Values.channelGateway.service.port }}"
+        prometheus.io/path: "/metrics"
     spec:
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+      volumes:
+        {{- if .Values.global.logging.sidecar.enabled }}
+        - name: app-logs
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.global.secrets.vault.enabled }}
+        - name: vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ required "global.secrets.vault.secretProviderClass is required when vault integration is enabled" .Values.global.secrets.vault.secretProviderClass | quote }}
+        {{- end }}
+      {{- end }}
       containers:
         - name: channel-gateway
           image: "{{ .Values.channelGateway.image.repository }}:{{ default .Chart.AppVersion .Values.channelGateway.image.tag }}"
           imagePullPolicy: {{ .Values.channelGateway.image.pullPolicy }}
+          {{- if and .Values.global.logging.sidecar.enabled .Values.channelGateway.startCommand }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -o pipefail
+              {{ .Values.channelGateway.startCommand }} 2>&1 | tee /var/log/xin/app.log
+          {{- end }}
           ports:
             - containerPort: {{ .Values.channelGateway.service.port }}
               name: http
@@ -54,9 +78,58 @@ spec:
             - secretRef:
                 name: {{ . }}
             {{- end }}
+          {{- if .Values.channelGateway.probes.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.channelGateway.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.channelGateway.probes.liveness.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.channelGateway.probes.liveness.periodSeconds | default 10 }}
+          {{- end }}
+          {{- if .Values.channelGateway.probes.readiness }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.channelGateway.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.channelGateway.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.channelGateway.probes.readiness.periodSeconds | default 5 }}
+          {{- end }}
           {{- if .Values.channelGateway.resources }}
           resources: {{- toYaml .Values.channelGateway.resources | nindent 12 }}
           {{- end }}
+          {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+          volumeMounts:
+            {{- if .Values.global.logging.sidecar.enabled }}
+            - name: app-logs
+              mountPath: /var/log/xin
+            {{- end }}
+            {{- if .Values.global.secrets.vault.enabled }}
+            - name: vault-secrets
+              mountPath: /var/run/secrets/xin
+              readOnly: true
+            {{- end }}
+          {{- end }}
+        {{- if and .Values.global.logging.sidecar.enabled .Values.channelGateway.startCommand }}
+        - name: channel-gateway-log-shipper
+          image: {{ .Values.global.logging.sidecar.image }}
+          args:
+            - "-i"
+            - "tail"
+            - "-p"
+            - "path=/var/log/xin/app.log"
+            - "-p"
+            - "refresh_interval=5"
+            - "-o"
+            - "loki"
+            - "-p"
+            - {{ printf "labels={app=\\\"%s\\\",component=\\\"channel-gateway\\\"}" (include "xin-platform.fullname" .) | quote }}
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/xin
+          {{- if .Values.global.logging.sidecar.resources }}
+          resources: {{- toYaml .Values.global.logging.sidecar.resources | nindent 12 }}
+          {{- end }}
+        {{- end }}
       {{- if .Values.channelGateway.nodeSelector }}
       nodeSelector: {{- toYaml .Values.channelGateway.nodeSelector | nindent 8 }}
       {{- end }}

@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
-FIXTURE_DIR = Path(__file__).resolve().parent.parent / "unit" / "channel_gateway" / "fixtures"
+FIXTURE_DIR = (
+    Path(__file__).resolve().parent.parent / "unit" / "channel_gateway" / "fixtures"
+)
 
 pytestmark = pytest.mark.contract
 
@@ -26,4 +28,6 @@ def test_fixture_contains_required_fields(fixture_name: str) -> None:
     missing = sorted(required_fields - payload.keys())
     assert not missing, f"Missing fields in {fixture_name}: {missing}"
 
-    assert payload.get("message") or payload.get("text"), "payload must include message content"
+    assert payload.get("message") or payload.get(
+        "text"
+    ), "payload must include message content"

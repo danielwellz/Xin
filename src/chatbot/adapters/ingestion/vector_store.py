@@ -58,7 +58,9 @@ class QdrantVectorStoreAdapter:
         ]
 
         if not points:
-            raise PersistenceError("no embeddings supplied for persistence", retryable=False)
+            raise PersistenceError(
+                "no embeddings supplied for persistence", retryable=False
+            )
 
         try:
             response = await self._client.put(
@@ -72,7 +74,9 @@ class QdrantVectorStoreAdapter:
                 "qdrant responded with error",
                 extra={"status": exc.response.status_code, "body": exc.response.text},
             )
-            raise PersistenceError("qdrant rejected persistence request", retryable=True) from exc
+            raise PersistenceError(
+                "qdrant rejected persistence request", retryable=True
+            ) from exc
         except httpx.HTTPError as exc:
             raise PersistenceError("failed to reach qdrant", retryable=True) from exc
 

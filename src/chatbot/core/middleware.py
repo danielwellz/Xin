@@ -49,7 +49,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        correlation_id = request.headers.get("x-request-id") or _generate_correlation_id()
+        correlation_id = (
+            request.headers.get("x-request-id") or _generate_correlation_id()
+        )
         token = _correlation_id_ctx.set(correlation_id)
         structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
         start = time.perf_counter()
@@ -77,10 +79,12 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             route = _route_from_scope(request)
             status_value = str(status_code)
 
-            REQUEST_COUNTER.labels(self._service_name, request.method, route, status_value).inc()
-            REQUEST_LATENCY.labels(self._service_name, request.method, route, status_value).observe(
-                duration
-            )
+            REQUEST_COUNTER.labels(
+                self._service_name, request.method, route, status_value
+            ).inc()
+            REQUEST_LATENCY.labels(
+                self._service_name, request.method, route, status_value
+            ).observe(duration)
 
             if response is not None:
                 response.headers["X-Request-ID"] = correlation_id

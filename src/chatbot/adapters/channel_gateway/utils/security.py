@@ -10,7 +10,9 @@ from ..models import SignatureContext
 from .exceptions import SignatureVerificationError
 
 
-def validate_hmac_signature(context: SignatureContext, *, algorithm: str = "sha256") -> None:
+def validate_hmac_signature(
+    context: SignatureContext, *, algorithm: str = "sha256"
+) -> None:
     """Validate a provider webhook request using HMAC signatures."""
 
     secret = context.secret.encode("utf-8")
@@ -19,7 +21,9 @@ def validate_hmac_signature(context: SignatureContext, *, algorithm: str = "sha2
     try:
         digestmod = getattr(hashlib, algorithm)
     except AttributeError as exc:  # pragma: no cover - safety guard
-        raise SignatureVerificationError(f"unsupported hash algorithm: {algorithm}") from exc
+        raise SignatureVerificationError(
+            f"unsupported hash algorithm: {algorithm}"
+        ) from exc
 
     computed = hmac.new(secret, payload, digestmod=digestmod).hexdigest()
     if not hmac.compare_digest(computed, context.signature):

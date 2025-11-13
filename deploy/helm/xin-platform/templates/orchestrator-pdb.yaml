@@ -1,0 +1,16 @@
+{{- if .Values.orchestrator.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-orchestrator
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  minAvailable: {{ .Values.orchestrator.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orchestrator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

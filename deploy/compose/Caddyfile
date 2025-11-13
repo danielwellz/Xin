@@ -1,0 +1,39 @@
+{
+    email {$TLS_CONTACT_EMAIL}
+    servers {
+        protocols h1 h2
+    }
+}
+
+http://localhost {
+    redir https://localhost{uri} 308
+}
+
+https://localhost {
+    tls internal
+
+    @webhooks path /webhooks* /webhooks/* /webhooks/*
+    handle @webhooks {
+        reverse_proxy channel_gateway:8080
+    }
+
+    handle_path /health {
+        respond "ok" 200
+    }
+
+    handle {
+        reverse_proxy orchestrator:8000
+    }
+
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Referrer-Policy "no-referrer"
+        X-Content-Type-Options "nosniff"
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

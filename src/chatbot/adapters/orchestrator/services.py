@@ -20,6 +20,7 @@ from chatbot.core.config import AppSettings
 from chatbot.core.db import models as db_models
 from chatbot.core.db.models import KnowledgeSourceStatus, MessageDirection
 from chatbot.core.storage import ObjectStorageClient
+from chatbot.policy.engine import PolicyEngine, RETRIEVAL_HITS
 from chatbot.utils.tracing import generate_trace_id
 from chatbot.rag.embeddings import EmbeddingService
 from chatbot.rag.retrieval import retrieve_context
@@ -28,6 +29,7 @@ from chatbot.rag.vector_store import VectorDocument, VectorStore
 from . import schemas
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass(slots=True)
 class ProcessedInbound:
@@ -144,6 +146,8 @@ class ContextService:
         brand_id: UUID,
         message: str,
         top_k: int = 5,
+        min_score: float = 0.0,
+        filters: dict[str, Any] | None = None,
     ) -> Sequence[VectorDocument]:
         if not message.strip():
             return []
@@ -151,7 +155,7 @@ class ContextService:
             logger.debug("context retrieval disabled; missing embedding/vector store")
             return []
         try:
-            return retrieve_context(
+            results = retrieve_context(
                 tenant_id=tenant_id,
                 brand_id=brand_id,
                 message=message,
@@ -159,9 +163,36 @@ class ContextService:
                 vector_store=self._vector_store,
                 top_k=top_k,
             )
+            filtered: list[VectorDocument] = []
+            for document in results:
+                score = (
+                    float(document.metadata.get("score", 0.0))
+                    if document.metadata
+                    else 0.0
+                )
+                if score < min_score:
+                    continue
+                if filters and not self._matches_filters(document.metadata, filters):
+                    continue
+                filtered.append(document)
+                if len(filtered) >= top_k:
+                    break
+            return filtered
         except Exception:  # pragma: no cover - defensive logging path
             logger.exception("failed to retrieve context snippets")
             return []
+
+    @staticmethod
+    def _matches_filters(
+        metadata: dict[str, Any] | None, filters: dict[str, Any]
+    ) -> bool:
+        if not filters:
+            return True
+        metadata = metadata or {}
+        for key, value in filters.items():
+            if metadata.get(key) != str(value):
+                return False
+        return True
 
 
 class ConversationService:
@@ -178,7 +209,9 @@ class ConversationService:
         self,
         payload: schemas.InboundMessageRequest,
     ) -> db_models.Conversation:
-        conversation = self._session.get(db_models.Conversation, payload.conversation_id)
+        conversation = self._session.get(
+            db_models.Conversation, payload.conversation_id
+        )
         if conversation is None:
             conversation = db_models.Conversation(
                 id=payload.conversation_id,
@@ -202,7 +235,9 @@ class ConversationService:
     ) -> db_models.MessageLog:
         metadata = {
             "trace_id": trace_id,
-            "attachments": [attachment.model_dump() for attachment in payload.attachments],
+            "attachments": [
+                attachment.model_dump() for attachment in payload.attachments
+            ],
             "metadata": payload.metadata or {},
         }
         log = db_models.MessageLog(
@@ -230,7 +265,8 @@ class ConversationService:
             "trace_id": trace_id,
             "persona_prompt": persona_prompt,
             "context": [
-                {"id": doc.id, "text": doc.text, "metadata": doc.metadata} for doc in context
+                {"id": doc.id, "text": doc.text, "metadata": doc.metadata}
+                for doc in context
             ],
         }
         log = db_models.MessageLog(
@@ -244,7 +280,9 @@ class ConversationService:
         conversation.last_message_at = datetime.now(tz=UTC)
         return log
 
-    def get_history(self, conversation_id: UUID, *, limit: int = 20) -> list[db_models.MessageLog]:
+    def get_history(
+        self, conversation_id: UUID, *, limit: int = 20
+    ) -> list[db_models.MessageLog]:
         statement = (
             select(db_models.MessageLog)
             .where(db_models.MessageLog.conversation_id == conversation_id)
@@ -294,6 +332,7 @@ class OrchestratorService:
         context_service: ContextService,
         llm_client: LLMClient,
         guardrail_service: GuardrailService,
+        policy_engine: PolicyEngine,
         redis_client: Redis | None = None,
         *,
         outbound_stream: str = "outbound:messages",
@@ -302,10 +341,13 @@ class OrchestratorService:
         self._context_service = context_service
         self._llm_client = llm_client
         self._guardrail_service = guardrail_service
+        self._policy_engine = policy_engine
         self._redis = redis_client
         self._stream = outbound_stream
 
-    def process_inbound(self, payload: schemas.InboundMessageRequest) -> ProcessedInbound:
+    def process_inbound(
+        self, payload: schemas.InboundMessageRequest
+    ) -> ProcessedInbound:
         """Process an inbound message end-to-end."""
 
         session = self._conversation_service.session
@@ -315,13 +357,28 @@ class OrchestratorService:
         self._conversation_service.log_inbound(conversation, payload, trace_id=trace_id)
         channel = self._conversation_service.get_channel_config(payload.channel_id)
 
+        decision = self._policy_engine.evaluate(
+            tenant_id=payload.tenant_id,
+            brand_id=payload.brand_id,
+            channel_id=payload.channel_id,
+            message=payload.content,
+        )
+        if not decision.allow_response:
+            raise GuardrailViolation(f"policy violation: {decision.reason or 'denied'}")
+
         history = self._conversation_service.get_history(payload.conversation_id)
         context = self._context_service.retrieve(
             tenant_id=payload.tenant_id,
             brand_id=payload.brand_id,
             message=payload.content,
+            top_k=decision.top_k,
+            min_score=decision.min_score,
+            filters=decision.filters,
         )
-        persona_prompt = self._conversation_service.get_active_persona_prompt(payload.brand_id)
+        RETRIEVAL_HITS.labels(str(payload.tenant_id)).inc(len(context))
+        persona_prompt = self._conversation_service.get_active_persona_prompt(
+            payload.brand_id
+        )
         reply = self._llm_client.generate_reply(
             persona_prompt=persona_prompt,
             message=payload.content,
@@ -380,7 +437,8 @@ class OrchestratorService:
             else str(channel.channel_type),
             "persona_prompt": persona_prompt,
             "context": [
-                {"id": doc.id, "text": doc.text, "metadata": doc.metadata} for doc in context
+                {"id": doc.id, "text": doc.text, "metadata": doc.metadata}
+                for doc in context
             ],
         }
 
@@ -411,6 +469,8 @@ class KnowledgeRegistrationResult:
     filename: str
     content_type: str
     source_uri: str
+    asset_id: UUID | None = None
+    ingestion_job_id: UUID | None = None
     should_enqueue: bool = True
 
 
@@ -434,11 +494,17 @@ class KnowledgeService:
             raise NoResultFound(f"brand {brand_id} not found")
 
         checksum = sha256(data).hexdigest()
-        existing = self._find_existing_knowledge(brand_id=brand_id, checksum=checksum, tolerate=True)
+        existing = self._find_existing_knowledge(
+            brand_id=brand_id, checksum=checksum, tolerate=True
+        )
         if existing is not None:
+            asset = existing.asset
             logger.info(
                 "using existing knowledge source for duplicate upload",
-                extra={"brand_id": str(brand_id), "knowledge_source_id": str(existing.id)},
+                extra={
+                    "brand_id": str(brand_id),
+                    "knowledge_source_id": str(existing.id),
+                },
             )
             return KnowledgeRegistrationResult(
                 knowledge=existing,
@@ -447,6 +513,8 @@ class KnowledgeService:
                 filename=filename,
                 content_type=content_type,
                 source_uri=existing.source_uri,
+                asset_id=asset.id if asset else None,
+                ingestion_job_id=existing.id,
                 should_enqueue=False,
             )
 
@@ -467,18 +535,28 @@ class KnowledgeService:
             asset_type=self._infer_asset_type(content_type),
             checksum=checksum,
             status=KnowledgeSourceStatus.PENDING,
-            metadata_json={"filename": upload.filename, "storage_key": upload.key},
+            metadata_json={
+                "filename": upload.filename,
+                "storage_key": upload.key,
+                "content_type": content_type,
+            },
         )
         self._session.add(knowledge)
         try:
             self._session.flush()
         except IntegrityError:
             self._session.rollback()
-            existing = self._find_existing_knowledge(brand_id=brand_id, checksum=checksum)
+            existing = self._find_existing_knowledge(
+                brand_id=brand_id, checksum=checksum
+            )
             logger.info(
                 "using existing knowledge source for duplicate upload after flush",
-                extra={"brand_id": str(brand_id), "knowledge_source_id": str(existing.id)},
+                extra={
+                    "brand_id": str(brand_id),
+                    "knowledge_source_id": str(existing.id),
+                },
             )
+            asset = existing.asset
             return KnowledgeRegistrationResult(
                 knowledge=existing,
                 tenant_id=brand.tenant_id,
@@ -486,11 +564,26 @@ class KnowledgeService:
                 filename=filename,
                 content_type=content_type,
                 source_uri=existing.source_uri,
+                asset_id=asset.id if asset else None,
+                ingestion_job_id=existing.id,
                 should_enqueue=False,
             )
         except Exception:
             self._session.rollback()
             raise
+
+        asset_id = self._create_asset(
+            tenant_id=brand.tenant_id,
+            brand_id=brand_id,
+            knowledge_source_id=knowledge.id,
+            title=upload.filename,
+            content_type=content_type,
+        )
+        job_id = self._ensure_ingestion_job(
+            knowledge_source_id=knowledge.id,
+            tenant_id=brand.tenant_id,
+            brand_id=brand_id,
+        )
 
         return KnowledgeRegistrationResult(
             knowledge=knowledge,
@@ -499,6 +592,8 @@ class KnowledgeService:
             filename=upload.filename,
             content_type=content_type,
             source_uri=upload.uri,
+            asset_id=asset_id,
+            ingestion_job_id=job_id,
         )
 
     def _find_existing_knowledge(
@@ -523,12 +618,59 @@ class KnowledgeService:
             return "text"
         return "document"
 
+    def _create_asset(
+        self,
+        *,
+        tenant_id: UUID,
+        brand_id: UUID,
+        knowledge_source_id: UUID,
+        title: str,
+        content_type: str,
+    ) -> UUID:
+        asset = db_models.KnowledgeAsset(
+            tenant_id=tenant_id,
+            brand_id=brand_id,
+            knowledge_source_id=knowledge_source_id,
+            title=title,
+            visibility=db_models.KnowledgeAssetVisibility.PRIVATE,
+            status=KnowledgeSourceStatus.PENDING,
+            tags=[],
+            metadata_json={"content_type": content_type},
+        )
+        self._session.add(asset)
+        self._session.flush()
+        return asset.id
+
+    def _ensure_ingestion_job(
+        self,
+        *,
+        knowledge_source_id: UUID,
+        tenant_id: UUID,
+        brand_id: UUID,
+    ) -> UUID:
+        existing = self._session.get(db_models.IngestionJob, knowledge_source_id)
+        if existing:
+            return existing.id
+
+        job = db_models.IngestionJob(
+            id=knowledge_source_id,
+            knowledge_source_id=knowledge_source_id,
+            tenant_id=tenant_id,
+            brand_id=brand_id,
+            status=db_models.IngestionJobStatus.PENDING,
+        )
+        self._session.add(job)
+        self._session.flush()
+        return job.id
+
 
 def convert_message_log(log: db_models.MessageLog) -> schemas.ConversationMessage:
     """Helper converting ``MessageLog`` records to API schema."""
 
     metadata = log.metadata_json if isinstance(log.metadata_json, dict) else None
-    direction = log.direction.value if hasattr(log.direction, "value") else str(log.direction)
+    direction = (
+        log.direction.value if hasattr(log.direction, "value") else str(log.direction)
+    )
     return schemas.ConversationMessage(
         id=log.id,
         direction=direction,

@@ -61,7 +61,9 @@ async def upload_knowledge_document(
             data=data,
         )
     except NoResultFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
 
     if registration.should_enqueue:
         await ingestion_publisher.enqueue_job(registration)

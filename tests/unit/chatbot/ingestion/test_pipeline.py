@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 import pytest
 
 from chatbot.adapters.ingestion.errors import EmbeddingError, FetchError
-from chatbot.adapters.ingestion.models import FetchedDocument, IngestionStatus, KnowledgeIngestJob
+from chatbot.adapters.ingestion.models import (
+    FetchedDocument,
+    IngestionStatus,
+    KnowledgeIngestJob,
+)
 from chatbot.adapters.ingestion.normalizer import MarkdownNormalizer
 from chatbot.adapters.ingestion.pipeline import IngestionPipeline
 

@@ -1,0 +1,16 @@
+{{- if .Values.channelGateway.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-channel-gateway
+  labels:
+    app.kubernetes.io/name: channel-gateway
+    app.kubernetes.io/component: channel-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  minAvailable: {{ .Values.channelGateway.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: channel-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

@@ -39,7 +39,9 @@ async def instagram_webhook(
             )
         )
     except SignatureVerificationError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
+        ) from exc
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))
@@ -73,11 +75,15 @@ def _parse_payload(payload: dict[str, object]) -> ProviderInboundEnvelope:
             detail=f"missing field {exc.args[0]}",
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     occurred_at_str = payload.get("occurred_at")
     occurred_at = (
-        datetime.fromisoformat(occurred_at_str) if isinstance(occurred_at_str, str) else None
+        datetime.fromisoformat(occurred_at_str)
+        if isinstance(occurred_at_str, str)
+        else None
     )
     if occurred_at and occurred_at.tzinfo is None:
         occurred_at = occurred_at.replace(tzinfo=UTC)

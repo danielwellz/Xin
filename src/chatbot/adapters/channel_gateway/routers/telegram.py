@@ -31,7 +31,9 @@ async def telegram_webhook(
     signature = request.headers.get("X-Telegram-Secret-Token")
 
     if signature != settings.telegram_secret:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="signature mismatch")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="signature mismatch"
+        )
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))
@@ -65,7 +67,9 @@ def _parse_payload(payload: dict[str, object]) -> ProviderInboundEnvelope:
             detail=f"missing field {exc.args[0]}",
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     occurred_at_str = payload.get("date")
     if isinstance(occurred_at_str, str):

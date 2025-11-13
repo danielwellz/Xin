@@ -1,0 +1,111 @@
+{
+  "app": {
+    "title": "کنسول اپراتور زین",
+    "tagline": "مدیریت مستأجران، سیاست‌ها و خودکارسازی"
+  },
+  "nav": {
+    "tenants": "مستأجران",
+    "channels": "کانال‌ها",
+    "policies": "سیاست‌ها",
+    "knowledge": "دانش",
+    "automation": "اتوماسیون",
+    "observability": "رصدپذیری",
+    "audit": "گزارش حسابرسی"
+  },
+  "actions": {
+    "search": "جستجو",
+    "edit": "ویرایش",
+    "save": "ذخیره",
+    "cancel": "انصراف",
+    "retry": "تلاش دوباره",
+    "pause": "مکث",
+    "resume": "ادامه",
+    "upload": "آپلود",
+    "preview": "پیش‌نمایش",
+    "publish": "انتشار",
+    "test": "تست",
+    "add": "افزودن",
+    "copy": "کپی",
+    "close": "بستن"
+  },
+  "auth": {
+    "heading": "با توکن ادمین وارد شوید",
+    "tokenLabel": "توکن JWT",
+    "submit": "ورود",
+    "persist": "ذخیره در این دستگاه",
+    "scopes": "دامنه‌ها",
+    "tenantScope": "دامنه مستأجر",
+    "sampleHint": "توکن صادر شده از پرتال ادمین را بچسبانید."
+  },
+  "tenant": {
+    "listTitle": "تمام مستأجران",
+    "searchPlaceholder": "جستجوی نام یا متادیتا…",
+    "empty": "هیچ مستأجری وجود ندارد",
+    "timezone": "منطقه زمانی",
+    "metadata": "متادیتا",
+    "channels": "کانال‌ها",
+    "audit": "گزارش حسابرسی",
+    "inlineEdit": "ویرایش سریع",
+    "channelSecret": "کلید مخفی کانال",
+    "webhookDocs": "راهنمای وب‌هوک"
+  },
+  "channelWizard": {
+    "title": "جادوگر کانال",
+    "step": "گام {{current}} از {{total}}",
+    "selectType": "انتخاب نوع کانال",
+    "configCredentials": "تنظیم اعتبارنامه‌ها",
+    "review": "مرور و کپی راز",
+    "brandName": "نام برند",
+    "displayName": "نام نمایشی",
+    "webhookUrl": "نشانی وب وب‌هوک",
+    "secret": "کلید مخفی",
+    "copySecret": "کپی کلید",
+    "webhookHint": "برای تکمیل وب‌هوک به دستورالعمل ران‌بوک مراجعه کنید."
+  },
+  "policy": {
+    "title": "ویرایشگر سیاست",
+    "schemaForm": "فرم طرح‌واره",
+    "jsonEditor": "ویرایشگر JSON",
+    "diff": "مقایسه پیش‌نویس و منتشر شده",
+    "runPrompt": "تست پرامپت",
+    "diagnostics": "نتیجه عیب‌یابی",
+    "publish": "انتشار پیش‌نویس"
+  },
+  "knowledge": {
+    "title": "دانش و پردازش",
+    "assets": "دارایی‌ها",
+    "jobs": "وظایف ورودی",
+    "upload": "بارگذاری سند",
+    "logs": "لاگ پردازش",
+    "retry": "اجرای دوباره",
+    "progress": "پیشرفت"
+  },
+  "automation": {
+    "title": "سازنده اتوماسیون",
+    "ruleDesigner": "طراح قانون",
+    "jsonPreview": "پیش‌نمایش JSON",
+    "jobs": "وضعیت وظایف",
+    "pause": "توقف قانون",
+    "resume": "ادامه قانون"
+  },
+  "observability": {
+    "title": "رصدپذیری",
+    "metrics": "شاخص‌های کلیدی",
+    "grafana": "عکس گرافانا",
+    "latency": "تأخیر API (میلی‌ثانیه)",
+    "ingestionLag": "تأخیر ورودی (دقیقه)",
+    "queueDepth": "تعداد صف اتوماسیون"
+  },
+  "i18n": {
+    "localeToggle": "زبان",
+    "english": "انگلیسی",
+    "persian": "فارسی"
+  },
+  "rbac": {
+    "restricted": "دسترسی محدود است. لطفاً دامنه گسترده‌تر درخواست کنید."
+  },
+  "upload": {
+    "selectFile": "انتخاب فایل",
+    "dragDrop": "بکشید و رها کنید یا انتخاب کنید"
+  }
+}

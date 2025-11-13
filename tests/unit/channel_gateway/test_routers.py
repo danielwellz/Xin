@@ -11,7 +11,10 @@ from httpx import AsyncClient
 
 from chatbot.adapters.channel_gateway import dependencies as deps
 from chatbot.adapters.channel_gateway.app import create_app
-from chatbot.adapters.channel_gateway.dependencies import get_orchestrator_client, get_settings
+from chatbot.adapters.channel_gateway.dependencies import (
+    get_orchestrator_client,
+    get_settings,
+)
 from chatbot.adapters.channel_gateway.settings import ChannelGatewaySettings
 
 
@@ -65,7 +68,9 @@ async def test_instagram_webhook_forwards_message(test_app):
     app, settings, orchestrator = test_app
     payload = load_fixture("instagram")
     body = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(settings.instagram_secret.encode("utf-8"), body, hashlib.sha1).hexdigest()
+    signature = hmac.new(
+        settings.instagram_secret.encode("utf-8"), body, hashlib.sha1
+    ).hexdigest()
 
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.post(
@@ -101,7 +106,9 @@ async def test_whatsapp_webhook_forwards_message(test_app):
     app, settings, orchestrator = test_app
     payload = load_fixture("whatsapp")
     body = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(settings.whatsapp_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        settings.whatsapp_secret.encode("utf-8"), body, hashlib.sha256
+    ).hexdigest()
 
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.post(
@@ -137,7 +144,9 @@ async def test_webchat_webhook_forwards_message(test_app):
     app, settings, orchestrator = test_app
     payload = load_fixture("web")
     body = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(settings.web_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        settings.web_secret.encode("utf-8"), body, hashlib.sha256
+    ).hexdigest()
 
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.post(

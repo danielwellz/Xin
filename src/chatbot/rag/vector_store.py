@@ -148,7 +148,11 @@ class QdrantVectorStore(VectorStore):
     def delete_namespace(self, namespace: str) -> None:
         response = self._client.post(
             f"{self._url}/collections/{self._collection}/points/delete?wait=true",
-            json={"filter": {"must": [{"key": "namespace", "match": {"value": namespace}}]}},
+            json={
+                "filter": {
+                    "must": [{"key": "namespace", "match": {"value": namespace}}]
+                }
+            },
             headers=self._headers(),
         )
         response.raise_for_status()
@@ -162,7 +166,9 @@ class QdrantVectorStore(VectorStore):
                 "vector": list(query),
                 "limit": top_k,
                 "with_payload": True,
-                "filter": {"must": [{"key": "namespace", "match": {"value": namespace}}]},
+                "filter": {
+                    "must": [{"key": "namespace", "match": {"value": namespace}}]
+                },
             },
             headers=self._headers(),
         )
@@ -172,7 +178,13 @@ class QdrantVectorStore(VectorStore):
         for item in payload.get("result", []):
             payload_data = item.get("payload", {})
             metadata = dict(payload_data.get("metadata") or {})
-            for key in ("tenant_id", "brand_id", "persona_id", "channel_id", "namespace"):
+            for key in (
+                "tenant_id",
+                "brand_id",
+                "persona_id",
+                "channel_id",
+                "namespace",
+            ):
                 value = payload_data.get(key)
                 if value is not None:
                     metadata.setdefault(key, str(value))

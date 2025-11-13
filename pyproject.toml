@@ -29,6 +29,7 @@ opentelemetry-exporter-otlp = "^1.24"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-instrumentation-httpx = "^0.45b0"
 prometheus-client = "^0.20"
+apscheduler = "^3.10"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.12"
@@ -45,11 +46,11 @@ requires = ["poetry-core>=1.7.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-line-length = 100
+line-length = 88
 target-version = ["py311"]
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 target-version = "py311"
 select = ["E", "F", "I", "B", "C4", "UP"]
 ignore = ["E203"]

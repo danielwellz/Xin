@@ -1,0 +1,111 @@
+{
+  "app": {
+    "title": "Xin Operator Console",
+    "tagline": "Multi-tenant operations, policies, and automation"
+  },
+  "nav": {
+    "tenants": "Tenants",
+    "channels": "Channels",
+    "policies": "Policies",
+    "knowledge": "Knowledge",
+    "automation": "Automation",
+    "observability": "Observability",
+    "audit": "Audit Trail"
+  },
+  "actions": {
+    "search": "Search",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "pause": "Pause",
+    "resume": "Resume",
+    "upload": "Upload",
+    "preview": "Preview",
+    "publish": "Publish",
+    "test": "Test",
+    "add": "Add",
+    "copy": "Copy",
+    "close": "Close"
+  },
+  "auth": {
+    "heading": "Sign in with an admin token",
+    "tokenLabel": "JWT token",
+    "submit": "Sign in",
+    "persist": "Remember this device",
+    "scopes": "Scopes",
+    "tenantScope": "Tenant scope",
+    "sampleHint": "Paste a token issued from the admin portal."
+  },
+  "tenant": {
+    "listTitle": "All tenants",
+    "searchPlaceholder": "Search tenants by name or metadata…",
+    "empty": "No tenants yet",
+    "timezone": "Timezone",
+    "metadata": "Metadata",
+    "channels": "Channels",
+    "audit": "Audit log",
+    "inlineEdit": "Inline edit",
+    "channelSecret": "Channel secret",
+    "webhookDocs": "Webhook instructions"
+  },
+  "channelWizard": {
+    "title": "Channel wizard",
+    "step": "Step {{current}} of {{total}}",
+    "selectType": "Select channel type",
+    "configCredentials": "Configure credentials",
+    "review": "Review & copy secrets",
+    "brandName": "Brand name",
+    "displayName": "Display name",
+    "webhookUrl": "Webhook URL",
+    "secret": "Secret",
+    "copySecret": "Copy secret",
+    "webhookHint": "Follow the runbook instructions to complete the webhook handshake."
+  },
+  "policy": {
+    "title": "Policy editor",
+    "schemaForm": "Schema form",
+    "jsonEditor": "JSON editor",
+    "diff": "Draft vs published diff",
+    "runPrompt": "Test prompt",
+    "diagnostics": "Diagnostics result",
+    "publish": "Publish draft"
+  },
+  "knowledge": {
+    "title": "Knowledge & ingestion",
+    "assets": "Assets",
+    "jobs": "Ingestion jobs",
+    "upload": "Upload document",
+    "logs": "Ingestion logs",
+    "retry": "Retry job",
+    "progress": "Progress"
+  },
+  "automation": {
+    "title": "Automation builder",
+    "ruleDesigner": "Rule designer",
+    "jsonPreview": "JSON preview",
+    "jobs": "Job status",
+    "pause": "Pause rule",
+    "resume": "Resume rule"
+  },
+  "observability": {
+    "title": "Observability",
+    "metrics": "Key metrics",
+    "grafana": "Grafana snapshot",
+    "latency": "API latency (ms)",
+    "ingestionLag": "Ingestion lag (min)",
+    "queueDepth": "Automation queue depth"
+  },
+  "i18n": {
+    "localeToggle": "Language",
+    "english": "English",
+    "persian": "Persian"
+  },
+  "rbac": {
+    "restricted": "Access restricted. Request an elevated scope."
+  },
+  "upload": {
+    "selectFile": "Select file",
+    "dragDrop": "Drag & drop or browse"
+  }
+}

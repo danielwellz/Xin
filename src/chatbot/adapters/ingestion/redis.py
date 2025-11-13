@@ -54,7 +54,9 @@ class RedisProgressPublisher:
         try:
             await self._redis.publish(channel, json.dumps(payload))
         except Exception:  # pragma: no cover - best effort logging
-            logger.exception("failed to publish ingestion progress", extra={"channel": channel})
+            logger.exception(
+                "failed to publish ingestion progress", extra={"channel": channel}
+            )
 
 
 class RedisPoisonQueue:
@@ -64,7 +66,9 @@ class RedisPoisonQueue:
         self._redis = redis
         self._key = key
 
-    async def push(self, job: KnowledgeIngestJob, error: IngestionError, *, attempt: int) -> None:
+    async def push(
+        self, job: KnowledgeIngestJob, error: IngestionError, *, attempt: int
+    ) -> None:
         payload = {
             "job": job.dict(by_alias=True),
             "error": error.as_dict(),
@@ -73,7 +77,9 @@ class RedisPoisonQueue:
         try:
             await self._redis.lpush(self._key, json.dumps(payload))
         except Exception:  # pragma: no cover - best effort logging
-            logger.exception("failed to record job in poison queue", extra={"queue": self._key})
+            logger.exception(
+                "failed to record job in poison queue", extra={"queue": self._key}
+            )
 
 
 def _stringify(detail: dict[str, object]) -> dict[str, str]:

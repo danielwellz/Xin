@@ -12,9 +12,13 @@ from redis import Redis
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
+from chatbot.admin.auth import JWTService
+from chatbot.admin.service import AdminService
+from chatbot.automation.service import AutomationService
 from chatbot.core.config import AppSettings
 from chatbot.core.db.session import create_engine_from_settings, init_db
 from chatbot.core.storage import ObjectStorageClient
+from chatbot.policy.engine import PolicyEngine
 from chatbot.rag.embeddings import EmbeddingService, EmbeddingSettings
 from chatbot.rag.vector_store import QdrantVectorStore, VectorStore
 
@@ -78,7 +82,9 @@ def get_embedding_service() -> EmbeddingService | None:
     )
     try:
         return EmbeddingService(embed_settings)
-    except Exception:  # pragma: no cover - avoid crashing when optional deps are missing
+    except (
+        Exception
+    ):  # pragma: no cover - avoid crashing when optional deps are missing
         logger.exception("failed to initialise embedding service")
         return None
 
@@ -149,7 +155,56 @@ VectorStoreDep = Annotated[VectorStore | None, Depends(get_vector_store)]
 SessionDep = Annotated[Session, Depends(get_session)]
 RedisDep = Annotated[Redis | None, Depends(get_redis_client)]
 StorageDep = Annotated[ObjectStorageClient, Depends(get_storage_client)]
-IngestionPublisherDep = Annotated[IngestionJobPublisher, Depends(get_ingestion_job_publisher)]
+IngestionPublisherDep = Annotated[
+    IngestionJobPublisher, Depends(get_ingestion_job_publisher)
+]
+
+
+def get_admin_service(
+    session: SessionDep,
+    storage_client: StorageDep,
+    redis_client: RedisDep,
+) -> AdminService:
+    """Return the admin/onboarding service."""
+
+    return AdminService(session, storage_client, redis_client)
+
+
+@lru_cache
+def get_jwt_service() -> JWTService:
+    """Configure the JWT signing/verification helper."""
+
+    settings = get_settings()
+    ttl_seconds = settings.admin_auth.access_token_ttl_minutes * 60
+    return JWTService(
+        secret=settings.admin_auth.jwt_secret,
+        issuer=settings.admin_auth.issuer,
+        audience=settings.admin_auth.audience,
+        ttl_seconds=ttl_seconds,
+    )
+
+
+AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]
+JWTServiceDep = Annotated[JWTService, Depends(get_jwt_service)]
+
+
+def get_policy_engine(session: SessionDep) -> PolicyEngine:
+    """Instantiate a policy engine bound to the active session."""
+
+    return PolicyEngine(session)
+
+
+PolicyEngineDep = Annotated[PolicyEngine, Depends(get_policy_engine)]
+
+
+def get_automation_service(
+    session: SessionDep,
+    redis_client: RedisDep,
+) -> AutomationService:
+    return AutomationService(session, redis_client)
+
+
+AutomationServiceDep = Annotated[AutomationService, Depends(get_automation_service)]
 
 
 def get_context_service(
@@ -168,10 +223,13 @@ def get_conversation_service(session: SessionDep) -> ConversationService:
 
 
 def get_orchestrator_service(
-    conversation_service: Annotated[ConversationService, Depends(get_conversation_service)],
+    conversation_service: Annotated[
+        ConversationService, Depends(get_conversation_service)
+    ],
     context_service: Annotated[ContextService, Depends(get_context_service)],
     llm_client: Annotated[LLMClient, Depends(get_llm_client)],
     guardrail_service: Annotated[GuardrailService, Depends(get_guardrail_service)],
+    policy_engine: PolicyEngineDep,
     redis_client: RedisDep,
 ) -> OrchestratorService:
     """Provide an orchestrator service instance for request handling."""
@@ -181,6 +239,7 @@ def get_orchestrator_service(
         context_service,
         llm_client,
         guardrail_service,
+        policy_engine,
         redis_client,
     )
 

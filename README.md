@@ -11,6 +11,9 @@ services:
   orchestrator and delivers outbound responses.
 - **Ingestion Worker** – Asynchronous worker that ingests knowledge uploads into
   MinIO/S3, chunks content, generates embeddings, and upserts vectors to Qdrant.
+- **Widget SDK** – Lightweight embed (`services/widget`) that exposes `/embed.js` and React bindings for client-facing chat.
+- **Frontend** – Vite + React operator console (Phase 3 parity) located at
+  `services/frontend` with bilingual tenant/channel/policy tooling.
 
 ## Quick Start
 
@@ -70,12 +73,23 @@ services:
    poetry run arq chatbot.adapters.ingestion.worker.WorkerSettings
    ```
 
+### Operator Console (Phase 3)
+
+1. `cd services/frontend && pnpm install`
+2. Copy `.env.example` → `.env` if you need to override `VITE_API_BASE_URL`. (Production
+   defaults to `window.location.origin`, so xinbot.ir works without extra config.)
+3. `pnpm dev` to run against the orchestrator (`VITE_USE_MOCKS=true` boots MSW data).
+4. Run the Cypress smoke tests in both locales with `pnpm e2e`.
+5. See `services/frontend/README.md` and `docs/frontend/operator_console.md` for screenshots, tooling, and deployment notes.
+
 ## Development Commands
 
 - `make format` – Run `black` + `ruff --fix`.
 - `make test` – Execute the entire pytest suite.
 - `make test-integration` – Run the integration suite (requires Docker).
 - `make verify` – Lint, type-check, and ensure coverage ≥ 85%.
+- `make ci` – Aggregates backend + frontend/widget checks (mirrors `.github/workflows/ci.yml`).
+- `make demo ADMIN_TOKEN=<platform_admin_jwt>` – Spins up the demo stack and seeds a tenant/channel for recordings.
 
-See `AGENTS.md` and `docs/RUNBOOK.md` for detailed contribution and operations
-guidelines.
+See `AGENTS.md`, `docs/RUNBOOK.md`, and `docs/deployment/xinbot_final_runbook.md`
+for detailed contribution, operations, and production deployment guidance.

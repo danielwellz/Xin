@@ -19,7 +19,16 @@ from chatbot.core.telemetry import (
 )
 
 from .dependencies import get_ingestion_job_publisher, get_settings
-from .routers import conversations, knowledge, messages
+from .routers import (
+    admin,
+    admin_automation,
+    admin_diagnostics,
+    admin_ingestion,
+    admin_policies,
+    conversations,
+    knowledge,
+    messages,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +65,11 @@ def create_app() -> FastAPI:
     def health(_: SettingsDep) -> HealthResponse:
         return HealthResponse()
 
+    app.include_router(admin.router)
+    app.include_router(admin_automation.router)
+    app.include_router(admin_ingestion.router)
+    app.include_router(admin_policies.router)
+    app.include_router(admin_diagnostics.router)
     app.include_router(messages.router)
     app.include_router(knowledge.router)
     app.include_router(conversations.router)

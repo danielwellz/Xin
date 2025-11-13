@@ -32,3 +32,18 @@
 - Keep API keys and secrets out of source control; load them via `.env` files consumed by `python-dotenv`.
 - Validate incoming payloads with `pydantic` models and log sanitized request fragments only.
 - Store uploaded knowledge assets exclusively through the configured object storage credentials (`STORAGE_*` settings).
+
+## Prompt Library
+Reference these prompts before starting any major milestone so every contributor triggers the right scripted workflow.
+
+### Backend & Frontend Delivery
+The original five backend/frontend prompts have been executed and archived after Phase 3. Use the integrated delivery plan for any future cross-stream coordination: `docs/delivery/integrated_plan.md`.
+
+### Hardening & Launch
+| Prompt | Triggering Condition | Link |
+| --- | --- | --- |
+| Production Infra & Observability | Execute at the outset of Phase 4 hardening (TLS, systemd, monitoring). | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-1--production-infrastructure--observability-hardening) |
+| Security Assurance & Compliance | Start once infra prompt is underway and before GA security reviews. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-2--security-assurance--compliance-review) |
+| Load, Chaos & Resilience Validation | Launch prior to scale testing or SLO sign-off; rerun before major releases. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-3--load-chaos-and-resilience-validation) |
+| QA, Data Integrity & Release Verification | Kick off when regression/verification window begins for a release candidate. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-4--qa-data-integrity-and-release-verification) |
+| Launch Readiness & Post-Launch Guardrails | Use during final go/no-go prep and post-launch war-room planning. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-5--launch-readiness-rollback-and-post-launch-guardrails) |

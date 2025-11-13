@@ -52,7 +52,10 @@ async def run_worker() -> None:
     await consumer.ensure_group()
     logger.info(
         "outbound worker started",
-        extra={"stream": settings.redis.stream_key, "group": settings.redis.consumer_group},
+        extra={
+            "stream": settings.redis.stream_key,
+            "group": settings.redis.consumer_group,
+        },
     )
     try:
         await consumer.poll()

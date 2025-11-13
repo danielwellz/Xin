@@ -2,6 +2,30 @@ global:
   imagePullSecrets: []
   otlpEndpoint: ""
   annotations: {}
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/hsts: "true"
+      nginx.ingress.kubernetes.io/hsts-max-age: "63072000"
+    tls:
+      issuer: ""
+      secretName: xin-platform-tls
+      orchestratorHosts: []
+      gatewayHosts: []
+  logging:
+    sidecar:
+      enabled: true
+      image: grafana/fluent-bit-plugin-loki:3.0
+      lokiEndpoint: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+      extraLabels: {}
+      resources: {}
+  secrets:
+    vault:
+      enabled: false
+      secretProviderClass: ""
 
 externalSecrets:
   enabled: false
@@ -12,7 +36,7 @@ externalSecrets:
   items: []
 
 orchestrator:
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: ghcr.io/example/xin-orchestrator
     tag: latest
@@ -21,16 +45,13 @@ orchestrator:
     type: ClusterIP
     port: 8000
   env:
-    POSTGRES_HOST: postgres
+    POSTGRES_HOST: postgres-rw
     POSTGRES_PORT: "5432"
     POSTGRES_DATABASE: chatbot
-    POSTGRES_USER: chatbot
-    POSTGRES_PASSWORD: Danial1380
+    POSTGRES_USER: chatbot_app
     REDIS_URL: redis://redis:6379/0
     QDRANT_URL: http://qdrant:6333
     STORAGE_ENDPOINT_URL: http://minio:9000
-    STORAGE_ACCESS_KEY: minio
-    STORAGE_SECRET_KEY: Danial1380@$
     STORAGE_REGION: us-east-1
     STORAGE_BUCKET: brand-knowledge
     INGEST_REDIS_HOST: redis
@@ -38,13 +59,38 @@ orchestrator:
     INGEST_REDIS_DB: "0"
     INGEST_QUEUE_NAME: ingestion
   secretRefs: []
-  resources: {}
+  startCommand: "uvicorn chatbot.adapters.orchestrator.app:create_app --factory --host 0.0.0.0 --port 8000"
+  probes:
+    liveness:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readiness:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 5
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75
+  pdb:
+    enabled: true
+    minAvailable: 1
   nodeSelector: {}
   tolerations: []
   affinity: {}
 
 channelGateway:
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: ghcr.io/example/xin-channel-gateway
     tag: latest
@@ -53,22 +99,42 @@ channelGateway:
     type: ClusterIP
     port: 8080
   env:
-    GATEWAY_ORCHESTRATOR_URL: http://orchestrator:8000
-    GATEWAY_INSTAGRAM_SECRET: dev-instagram
-    GATEWAY_WHATSAPP_SECRET: dev-whatsapp
-    GATEWAY_TELEGRAM_SECRET: dev-telegram
-    GATEWAY_WEB_SECRET: dev-web
+    GATEWAY_ORCHESTRATOR_URL: http://xin-platform-orchestrator:8000
     GATEWAY_REDIS__HOST: redis
     GATEWAY_REDIS__PORT: "6379"
     GATEWAY_REDIS__DB: "0"
   secretRefs: []
-  resources: {}
+  startCommand: "uvicorn chatbot.adapters.channel_gateway.app:create_app --factory --host 0.0.0.0 --port 8080"
+  probes:
+    liveness:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readiness:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 5
+  resources:
+    requests:
+      cpu: 250m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
   nodeSelector: {}
   tolerations: []
   affinity: {}
 
 ingestionWorker:
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: ghcr.io/example/xin-ingestion-worker
     tag: latest
@@ -77,13 +143,73 @@ ingestionWorker:
     INGEST_REDIS_HOST: redis
     INGEST_REDIS_PORT: "6379"
     INGEST_REDIS_DB: "0"
-    INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@postgres:5432/chatbot
+    INGEST_POSTGRES_DSN: postgresql://chatbot_app@postgres-rw:5432/chatbot
     INGEST_MINIO_ENDPOINT_URL: http://minio:9000
-    INGEST_MINIO_ACCESS_KEY: minio
-    INGEST_MINIO_SECRET_KEY: Danial1380@$
     INGEST_QDRANT_URL: http://qdrant:6333
+    INGEST_REDIS_QUEUE_NAME: ingestion
+    INGEST_METRICS_PORT: "9103"
   secretRefs: []
-  resources: {}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 600m
+      memory: 768Mi
+  probes:
+    liveness:
+      tcpSocket:
+        port: 6379
+      initialDelaySeconds: 15
+      periodSeconds: 10
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+automationWorker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/example/xin-automation-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  env:
+    REDIS_URL: redis://redis:6379/0
+    OTEL_METRICS_PORT: "9105"
+  secretRefs: []
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  probes:
+    liveness:
+      httpGet:
+        path: /metrics
+        port: 9105
+      initialDelaySeconds: 15
+      periodSeconds: 15
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+frontend:
+  enabled: true
+  image:
+    repository: ghcr.io/example/xin-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  env:
+    VITE_API_BASE_URL: https://api.xinbot.ir
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}

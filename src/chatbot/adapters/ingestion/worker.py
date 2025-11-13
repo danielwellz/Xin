@@ -10,7 +10,10 @@ from arq.connections import RedisSettings
 from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
-from chatbot.adapters.ingestion.postgres import PostgresStatusRepository, PostgresStatusSettings
+from chatbot.adapters.ingestion.postgres import (
+    PostgresStatusRepository,
+    PostgresStatusSettings,
+)
 from chatbot.adapters.ingestion.redis import (
     ProgressPublisherSettings,
     RedisPoisonQueue,
@@ -26,7 +29,11 @@ from chatbot.adapters.ingestion.pipeline import IngestionPipeline
 from chatbot.adapters.ingestion.settings import IngestionWorkerSettings
 from chatbot.utils.retry import exponential_backoff
 from chatbot.core.logging import configure_logging
-from chatbot.core.telemetry import init_tracing, is_tracing_enabled, parse_exporter_headers
+from chatbot.core.telemetry import (
+    init_tracing,
+    is_tracing_enabled,
+    parse_exporter_headers,
+)
 from chatbot.rag.embeddings import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -129,7 +136,9 @@ async def shutdown(ctx: dict[str, Any]) -> None:
         await redis_client.close()
 
 
-async def process_knowledge_ingest(ctx: dict[str, Any], payload: dict[str, Any]) -> dict[str, str]:
+async def process_knowledge_ingest(
+    ctx: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, str]:
     """Process a knowledge ingestion job and return completion metadata."""
 
     job = KnowledgeIngestJob.model_validate(payload)
@@ -169,12 +178,18 @@ async def process_knowledge_ingest(ctx: dict[str, Any], payload: dict[str, Any])
             job=job,
             status=IngestionStatus.RUNNING,
             stage="retrying",
-            detail={"message": exc.message, "attempt": attempt, "retry_in": round(delay, 2)},
+            detail={
+                "message": exc.message,
+                "attempt": attempt,
+                "retry_in": round(delay, 2),
+            },
         )
 
         raise Retry(defer=delay) from exc
     except Exception:
-        logger.exception("unhandled exception during ingestion job", extra={"job_id": job.job_id})
+        logger.exception(
+            "unhandled exception during ingestion job", extra={"job_id": job.job_id}
+        )
         progress: RedisProgressPublisher = ctx["progress_publisher"]
         status_repo: PostgresStatusRepository = ctx["status_repository"]
         poison_queue: RedisPoisonQueue = ctx["poison_queue"]

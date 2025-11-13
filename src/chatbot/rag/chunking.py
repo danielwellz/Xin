@@ -50,7 +50,10 @@ _TABLE_ROW_PATTERN = re.compile(r"^\s*\|.*\|$", flags=re.MULTILINE)
 
 
 def chunk_markdown(
-    text: str, config: ChunkingConfig | None = None, *, metadata: dict[str, str] | None = None
+    text: str,
+    config: ChunkingConfig | None = None,
+    *,
+    metadata: dict[str, str] | None = None,
 ) -> list[Chunk]:
     """Split markdown into semantically coherent chunks.
 
@@ -109,7 +112,9 @@ def _iter_sections(text: str) -> Iterator[tuple[str, str]]:
         yield (heading, text[start:end].strip())
 
 
-def _chunk_body(body: str, config: ChunkingConfig, metadata: dict[str, str]) -> list[Chunk]:
+def _chunk_body(
+    body: str, config: ChunkingConfig, metadata: dict[str, str]
+) -> list[Chunk]:
     """Chunk a text body by paragraphs with overlap."""
 
     paragraphs = [dedent(p).strip() for p in re.split(r"\n{2,}", body) if p.strip()]
@@ -162,7 +167,9 @@ def _chunk_faq_table(body: str, metadata: dict[str, str]) -> list[Chunk]:
     return chunks
 
 
-def _split_segment(segment: str, config: ChunkingConfig, metadata: dict[str, str]) -> list[Chunk]:
+def _split_segment(
+    segment: str, config: ChunkingConfig, metadata: dict[str, str]
+) -> list[Chunk]:
     """Split a long segment into overlapping windows."""
 
     if len(segment) <= config.chunk_size or len(segment) <= config.min_chunk_size:

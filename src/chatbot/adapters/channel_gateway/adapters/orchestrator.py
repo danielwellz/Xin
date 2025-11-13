@@ -25,7 +25,9 @@ class OrchestratorClient:
 
     def __init__(self, *, settings: OrchestratorClientSettings) -> None:
         self._settings = settings
-        self._client = httpx.AsyncClient(base_url=settings.base_url, timeout=settings.timeout)
+        self._client = httpx.AsyncClient(
+            base_url=settings.base_url, timeout=settings.timeout
+        )
 
     async def close(self) -> None:
         await self._client.aclose()

@@ -1,3 +1,14 @@
+global:
+  otlpEndpoint: http://tempo.monitoring:4317
+  ingress:
+    tls:
+      issuer: letsencrypt-prod
+      secretName: xin-platform-tls
+      orchestratorHosts:
+        - api.xinbot.ir
+      gatewayHosts:
+        - gateway.xinbot.ir
+
 orchestrator:
   replicaCount: 4
   image:
@@ -40,6 +51,13 @@ ingestionWorker:
   secretRefs:
     - xin-ingestion-worker-secrets
 
+automationWorker:
+  replicaCount: 2
+  image:
+    tag: prod
+  secretRefs:
+    - xin-automation-worker-secrets
+
 externalSecrets:
   enabled: true
   refreshInterval: 30m
@@ -77,3 +95,9 @@ externalSecrets:
           remoteRef:
             key: xin/platform/prod/ingestion
             property: QDRANT_API_KEY
+    - name: automation-worker-secrets
+      target:
+        name: xin-automation-worker-secrets
+      dataFrom:
+        - extract:
+            key: xin/platform/prod/automation

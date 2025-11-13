@@ -27,7 +27,10 @@ class InstagramAdapter:
     async def send(self, response: OutboundResponse) -> None:
         logger.info(
             "sending instagram response",
-            extra={"conversation": str(response.conversation_id), "content": response.content},
+            extra={
+                "conversation": str(response.conversation_id),
+                "content": response.content,
+            },
         )
 
 
@@ -40,7 +43,10 @@ class WhatsAppAdapter:
     async def send(self, response: OutboundResponse) -> None:
         logger.info(
             "sending whatsapp response",
-            extra={"conversation": str(response.conversation_id), "content": response.content},
+            extra={
+                "conversation": str(response.conversation_id),
+                "content": response.content,
+            },
         )
 
 
@@ -53,7 +59,10 @@ class TelegramAdapter:
     async def send(self, response: OutboundResponse) -> None:
         logger.info(
             "sending telegram response",
-            extra={"conversation": str(response.conversation_id), "content": response.content},
+            extra={
+                "conversation": str(response.conversation_id),
+                "content": response.content,
+            },
         )
 
 
@@ -64,5 +73,8 @@ class WebChatAdapter:
     async def send(self, response: OutboundResponse) -> None:
         logger.info(
             "sending web chat response",
-            extra={"conversation": str(response.conversation_id), "content": response.content},
+            extra={
+                "conversation": str(response.conversation_id),
+                "content": response.content,
+            },
         )

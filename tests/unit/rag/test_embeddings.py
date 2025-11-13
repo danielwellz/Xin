@@ -20,10 +20,14 @@ def test_openai_fallbacks_to_sentence_transformer(monkeypatch):
 
     monkeypatch.setattr(EmbeddingService, "_load_openai_client", _raise_openai)
     monkeypatch.setattr(EmbeddingService, "_load_openai_async_client", _raise_openai)
-    monkeypatch.setattr(EmbeddingService, "_load_sentence_transformer", lambda self: _StubModel())
+    monkeypatch.setattr(
+        EmbeddingService, "_load_sentence_transformer", lambda self: _StubModel()
+    )
 
     service = EmbeddingService(
-        EmbeddingSettings(provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=True)
+        EmbeddingSettings(
+            provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=True
+        )
     )
 
     vectors = service.embed(["hello world"])
@@ -37,10 +41,14 @@ async def test_openai_async_fallback(monkeypatch):
 
     monkeypatch.setattr(EmbeddingService, "_load_openai_client", _raise_openai)
     monkeypatch.setattr(EmbeddingService, "_load_openai_async_client", _raise_openai)
-    monkeypatch.setattr(EmbeddingService, "_load_sentence_transformer", lambda self: _StubModel())
+    monkeypatch.setattr(
+        EmbeddingService, "_load_sentence_transformer", lambda self: _StubModel()
+    )
 
     service = EmbeddingService(
-        EmbeddingSettings(provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=True)
+        EmbeddingSettings(
+            provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=True
+        )
     )
 
     vectors = await service.embed_async(["xin"])
@@ -54,9 +62,10 @@ def test_openai_without_fallback_raises(monkeypatch):
     monkeypatch.setattr(EmbeddingService, "_load_openai_client", _raise)
 
     service = EmbeddingService(
-        EmbeddingSettings(provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=False)
+        EmbeddingSettings(
+            provider=LLMProvider.OPENAI, openai_api_key=None, fallback_to_local=False
+        )
     )
 
     with pytest.raises(RuntimeError, match="no api key"):
         service.embed(["xin"])
-

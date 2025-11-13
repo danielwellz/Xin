@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: xin-prod
+
+helmCharts:
+  - name: xin-platform
+    releaseName: xin
+    namespace: xin-prod
+    path: ../helm/xin-platform
+    valuesFile: ../helm/xin-platform/values-production.yaml

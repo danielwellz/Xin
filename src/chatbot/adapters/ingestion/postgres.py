@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from psycopg2 import pool
 
-from chatbot.core.db.models import KnowledgeSourceStatus
+from chatbot.core.db.models import IngestionJobStatus, KnowledgeSourceStatus
 
 
 @dataclass(slots=True)
@@ -42,6 +42,7 @@ class PostgresStatusRepository:
             """,
             (KnowledgeSourceStatus.PROCESSING.value, job_id),
         )
+        await self._update_ingestion_job(job_id, IngestionJobStatus.RUNNING.value)
 
     async def mark_completed(self, job_id: str, *, chunks: int, vectors: int) -> None:
         await self._execute(
@@ -54,6 +55,7 @@ class PostgresStatusRepository:
             """,
             (KnowledgeSourceStatus.READY.value, job_id),
         )
+        await self._update_ingestion_job(job_id, IngestionJobStatus.COMPLETED.value)
 
     async def mark_failed(self, job_id: str, *, reason: str) -> None:
         await self._execute(
@@ -65,6 +67,9 @@ class PostgresStatusRepository:
              WHERE id = %s
             """,
             (KnowledgeSourceStatus.FAILED.value, reason, job_id),
+        )
+        await self._update_ingestion_job(
+            job_id, IngestionJobStatus.FAILED.value, reason=reason
         )
 
     async def _execute(self, query: str, params: tuple[object, ...]) -> None:
@@ -81,3 +86,18 @@ class PostgresStatusRepository:
 
     async def close(self) -> None:
         await asyncio.to_thread(self._pool.closeall)
+
+    async def _update_ingestion_job(
+        self, job_id: str, status: str, reason: str | None = None
+    ) -> None:
+        await self._execute(
+            """
+            UPDATE ingestion_jobs
+               SET status = %s,
+                   started_at = COALESCE(started_at, NOW()),
+                   completed_at = CASE WHEN %s IN ('completed', 'failed') THEN NOW() ELSE completed_at END,
+                   failure_reason = %s
+             WHERE id = %s
+            """,
+            (status, status, reason, job_id),
+        )

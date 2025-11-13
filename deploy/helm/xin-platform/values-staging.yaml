@@ -19,6 +19,10 @@ ingestionWorker:
   secretRefs:
     - xin-ingestion-worker-secrets
 
+automationWorker:
+  secretRefs:
+    - xin-automation-worker-secrets
+
 externalSecrets:
   enabled: true
   refreshInterval: 1h
@@ -56,3 +60,9 @@ externalSecrets:
       dataFrom:
         - extract:
             key: kv/data/xin/staging/ingestion-worker
+    - name: automation-worker-secrets
+      target:
+        name: xin-automation-worker-secrets
+      dataFrom:
+        - extract:
+            key: kv/data/xin/staging/automation-worker

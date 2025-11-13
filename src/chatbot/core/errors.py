@@ -41,7 +41,9 @@ class CoreError(Exception):
 class NotFoundError(CoreError):
     """Raised when a resource cannot be located."""
 
-    def __init__(self, message: str, *, details: Mapping[str, Any] | None = None) -> None:
+    def __init__(
+        self, message: str, *, details: Mapping[str, Any] | None = None
+    ) -> None:
         super().__init__(
             message=message,
             status_code=HTTPStatus.NOT_FOUND,

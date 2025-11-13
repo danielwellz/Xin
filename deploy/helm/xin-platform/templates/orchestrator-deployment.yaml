@@ -28,15 +28,39 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ .Values.orchestrator.service.port }}"
+        prometheus.io/path: "/metrics"
     spec:
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+      volumes:
+        {{- if .Values.global.logging.sidecar.enabled }}
+        - name: app-logs
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.global.secrets.vault.enabled }}
+        - name: vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ required "global.secrets.vault.secretProviderClass is required when vault integration is enabled" .Values.global.secrets.vault.secretProviderClass | quote }}
+        {{- end }}
+      {{- end }}
       containers:
         - name: orchestrator
           image: "{{ .Values.orchestrator.image.repository }}:{{ default .Chart.AppVersion .Values.orchestrator.image.tag }}"
           imagePullPolicy: {{ .Values.orchestrator.image.pullPolicy }}
+          {{- if and .Values.global.logging.sidecar.enabled .Values.orchestrator.startCommand }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -o pipefail
+              {{ .Values.orchestrator.startCommand }} 2>&1 | tee /var/log/xin/app.log
+          {{- end }}
           ports:
             - containerPort: {{ .Values.orchestrator.service.port }}
               name: http
@@ -54,9 +78,60 @@ spec:
             - secretRef:
                 name: {{ . }}
             {{- end }}
+          {{- if .Values.orchestrator.probes.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.orchestrator.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.orchestrator.probes.liveness.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.orchestrator.probes.liveness.periodSeconds | default 10 }}
+          {{- end }}
+          {{- if .Values.orchestrator.probes.readiness }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.orchestrator.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.orchestrator.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.orchestrator.probes.readiness.periodSeconds | default 5 }}
+          {{- end }}
           {{- if .Values.orchestrator.resources }}
           resources: {{- toYaml .Values.orchestrator.resources | nindent 12 }}
           {{- end }}
+          {{- if or .Values.global.logging.sidecar.enabled .Values.global.secrets.vault.enabled }}
+          volumeMounts:
+            {{- if .Values.global.logging.sidecar.enabled }}
+            - name: app-logs
+              mountPath: /var/log/xin
+            {{- end }}
+            {{- if .Values.global.secrets.vault.enabled }}
+            - name: vault-secrets
+              mountPath: /var/run/secrets/xin
+              readOnly: true
+            {{- end }}
+          {{- end }}
+        {{- if and .Values.global.logging.sidecar.enabled .Values.orchestrator.startCommand }}
+        - name: orchestrator-log-shipper
+          image: {{ .Values.global.logging.sidecar.image }}
+          args:
+            - "-i"
+            - "tail"
+            - "-p"
+            - "path=/var/log/xin/app.log"
+            - "-p"
+            - "refresh_interval=5"
+            - "-o"
+            - "loki"
+            - "-p"
+            - "url={{ .Values.global.logging.sidecar.lokiEndpoint }}"
+            - "-p"
+            - {{ printf "labels={app=\\\"%s\\\",component=\\\"orchestrator\\\"}" (include "xin-platform.fullname" .) | quote }}
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/xin
+          {{- if .Values.global.logging.sidecar.resources }}
+          resources: {{- toYaml .Values.global.logging.sidecar.resources | nindent 12 }}
+          {{- end }}
+        {{- end }}
       {{- if .Values.orchestrator.nodeSelector }}
       nodeSelector: {{- toYaml .Values.orchestrator.nodeSelector | nindent 8 }}
       {{- end }}

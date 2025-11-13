@@ -1,0 +1,22 @@
+[Unit]
+Description=Xin Orchestrator API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xin
+Group=xin
+WorkingDirectory=/opt/xin-chatbot/src
+EnvironmentFile=/opt/xin-chatbot/config/orchestrator.env
+Environment="PATH=/opt/xin-chatbot/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="PYTHONPATH=/opt/xin-chatbot/src"
+ExecStart=/usr/bin/env bash -c 'source /opt/xin-chatbot/.venv/bin/activate && exec uvicorn chatbot.adapters.orchestrator.app:create_app --factory --host "${ORCHESTRATOR_BIND:-127.0.0.1}" --port "${ORCHESTRATOR_PORT:-8000}"'
+ExecStartPost=/usr/bin/env bash -c '/opt/xin-chatbot/src/scripts/systemd/healthcheck.sh --url "http://127.0.0.1:${ORCHESTRATOR_PORT:-8000}/health" --name xin-orchestrator'
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

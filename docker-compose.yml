@@ -1,143 +1,309 @@
 version: "3.9"
 
+x-env-file: &default-env
+  - ${XIN_COMPOSE_ENV_FILE:-./deploy/compose/.env.dev}
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: xin_postgres
-    environment:
-      POSTGRES_DB: chatbot
-      POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: Danial1380
-    volumes:
-      - ../volumes/postgres:/var/lib/postgresql/data
-    #ports:
-    #  - "5432:5432"
     restart: always
+    env_file: *default-env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-chatbot}
+      POSTGRES_USER: ${POSTGRES_USER:-chatbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chatbot} -d ${POSTGRES_DB:-chatbot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - xin_internal
 
   redis:
     image: redis:7-alpine
     container_name: xin_redis
     command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - ../volumes/redis:/data
-   # ports:
-   #   - "6379:6379"
     restart: always
+    env_file: *default-env
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xin_internal
 
   qdrant:
-    image: qdrant/qdrant:v1.5.1
+    image: qdrant/qdrant:v1.9.1
     container_name: xin_qdrant
-    volumes:
-      - ../volumes/qdrant:/qdrant/storage
-   # ports:
-   #   - "6333:6333"
     restart: always
+    env_file: *default-env
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xin_internal
 
   minio:
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     container_name: xin_minio
-    networks:
-      default:
-        aliases:
-          - minio
+    restart: always
+    env_file: *default-env
     environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: Danial1380@$
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio-secret}
     command: server /data --console-address ":9001"
     volumes:
-      - ../volumes/minio:/data
-  #  ports:
-   #   - "9000:9000"
-   #   - "9001:9001"
-    restart: always
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xin_internal
 
   orchestrator:
     build:
       context: .
       dockerfile: services/orchestrator/Dockerfile
     container_name: xin_orchestrator
+    restart: unless-stopped
+    env_file: *default-env
     environment:
       PYTHONPATH: /app/src
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DATABASE: chatbot
-      POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: Danial1380
-      REDIS_URL: redis://redis:6379/0
-      QDRANT_URL: http://qdrant:6333
-      QDRANT_API_KEY: ""
-      STORAGE_ENDPOINT_URL: http://minio:9000
-      STORAGE_ACCESS_KEY: minio
-      STORAGE_SECRET_KEY: Danial1380@$
-      STORAGE_REGION: us-east-1
-      STORAGE_BUCKET: brand-knowledge
-      INGEST_REDIS_HOST: redis
-      INGEST_REDIS_PORT: 6379
-      INGEST_REDIS_DB: 0
-      INGEST_QUEUE_NAME: ingestion
-      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DATABASE: ${POSTGRES_DB:-chatbot}
+      POSTGRES_USER: ${POSTGRES_USER:-chatbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-password}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      STORAGE_ENDPOINT_URL: ${STORAGE_ENDPOINT_URL:-http://minio:9000}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-minio}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-minio-secret}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-brand-knowledge}
+      INGEST_REDIS_HOST: ${INGEST_REDIS_HOST:-redis}
+      INGEST_REDIS_PORT: ${INGEST_REDIS_PORT:-6379}
+      INGEST_REDIS_DB: ${INGEST_REDIS_DB:-0}
+      INGEST_QUEUE_NAME: ${INGEST_QUEUE_NAME:-ingestion}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
     depends_on:
-      - postgres
-      - redis
-      - qdrant
-      - minio
-   # ports:
-   #   - "8000:8000"
-    restart: on-failure
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xin_internal
 
   channel_gateway:
     build:
       context: .
       dockerfile: services/channel_gateway/Dockerfile
     container_name: xin_channel_gateway
+    restart: unless-stopped
+    env_file: *default-env
     environment:
       GATEWAY_ORCHESTRATOR_URL: http://orchestrator:8000
-      GATEWAY_INSTAGRAM_SECRET: dev-instagram
-      GATEWAY_WHATSAPP_SECRET: dev-whatsapp
-      GATEWAY_TELEGRAM_SECRET: dev-telegram
-      GATEWAY_WEB_SECRET: dev-web
-      GATEWAY_INSTAGRAM_TOKEN: dev-instagram-token
-      GATEWAY_WHATSAPP_TOKEN: dev-whatsapp-token
-      GATEWAY_TELEGRAM_TOKEN: dev-telegram-token
-      GATEWAY_REDIS__HOST: redis
-      GATEWAY_REDIS__PORT: 6379
-      GATEWAY_REDIS__DB: 0
-      GATEWAY_REDIS__PASSWORD: ""
-      GATEWAY_OTLP_ENDPOINT: ""
+      GATEWAY_INSTAGRAM_SECRET: ${GATEWAY_INSTAGRAM_SECRET:-dev-instagram}
+      GATEWAY_WHATSAPP_SECRET: ${GATEWAY_WHATSAPP_SECRET:-dev-whatsapp}
+      GATEWAY_TELEGRAM_SECRET: ${GATEWAY_TELEGRAM_SECRET:-dev-telegram}
+      GATEWAY_WEB_SECRET: ${GATEWAY_WEB_SECRET:-dev-web}
+      GATEWAY_INSTAGRAM_TOKEN: ${GATEWAY_INSTAGRAM_TOKEN:-dev-instagram-token}
+      GATEWAY_WHATSAPP_TOKEN: ${GATEWAY_WHATSAPP_TOKEN:-dev-whatsapp-token}
+      GATEWAY_TELEGRAM_TOKEN: ${GATEWAY_TELEGRAM_TOKEN:-dev-telegram-token}
+      GATEWAY_REDIS__HOST: ${GATEWAY_REDIS__HOST:-redis}
+      GATEWAY_REDIS__PORT: ${GATEWAY_REDIS__PORT:-6379}
+      GATEWAY_REDIS__DB: ${GATEWAY_REDIS__DB:-0}
+      GATEWAY_REDIS__PASSWORD: ${GATEWAY_REDIS__PASSWORD:-}
+      GATEWAY_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
     depends_on:
-      - orchestrator
-      - redis
-  #  ports:
-   #   - "8080:8080"
-    restart: on-failure
+      orchestrator:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xin_internal
 
   ingestion_worker:
     build:
       context: .
       dockerfile: services/ingestion_worker/Dockerfile
     container_name: xin_ingestion_worker
+    restart: unless-stopped
+    env_file: *default-env
     environment:
-      INGEST_REDIS_HOST: redis
-      INGEST_REDIS_PORT: 6379
-      INGEST_REDIS_DB: 0
-      INGEST_REDIS_PASSWORD: ""
-      INGEST_POSTGRES_DSN: postgresql://chatbot:Danial1380@postgres:5432/chatbot
-      INGEST_MINIO_ENDPOINT_URL: http://minio:9000
-      INGEST_MINIO_ACCESS_KEY: minio
-      INGEST_MINIO_SECRET_KEY: Danial1380@$
-      INGEST_QDRANT_URL: http://qdrant:6333
-      INGEST_QDRANT_API_KEY: ""
-      INGEST_REDIS_QUEUE_NAME: ingestion
-      INGEST_OTLP_ENDPOINT: ""
+      INGEST_REDIS_HOST: ${INGEST_REDIS_HOST:-redis}
+      INGEST_REDIS_PORT: ${INGEST_REDIS_PORT:-6379}
+      INGEST_REDIS_DB: ${INGEST_REDIS_DB:-0}
+      INGEST_REDIS_PASSWORD: ${INGEST_REDIS_PASSWORD:-}
+      INGEST_POSTGRES_DSN: ${INGEST_POSTGRES_DSN:-postgresql://chatbot:dev-password@postgres:5432/chatbot}
+      INGEST_MINIO_ENDPOINT_URL: ${INGEST_MINIO_ENDPOINT_URL:-http://minio:9000}
+      INGEST_MINIO_ACCESS_KEY: ${INGEST_MINIO_ACCESS_KEY:-minio}
+      INGEST_MINIO_SECRET_KEY: ${INGEST_MINIO_SECRET_KEY:-minio-secret}
+      INGEST_QDRANT_URL: ${INGEST_QDRANT_URL:-http://qdrant:6333}
+      INGEST_QDRANT_API_KEY: ${INGEST_QDRANT_API_KEY:-}
+      INGEST_REDIS_QUEUE_NAME: ${INGEST_QUEUE_NAME:-ingestion}
+      INGEST_METRICS_PORT: ${INGEST_METRICS_PORT:-9103}
+      INGEST_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
     depends_on:
-      - redis
-      - postgres
-      - minio
-      - qdrant
-    restart: on-failure
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          python - <<'PY'
+          import os
+          import redis
+          host = os.environ.get("INGEST_REDIS_HOST", "redis")
+          port = int(os.environ.get("INGEST_REDIS_PORT", 6379))
+          client = redis.Redis(host=host, port=port, db=int(os.environ.get("INGEST_REDIS_DB", 0)))
+          client.ping()
+          PY
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - xin_internal
+
+  automation_worker:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    container_name: xin_automation_worker
+    restart: unless-stopped
+    env_file: *default-env
+    environment:
+      PYTHONPATH: /app/src
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DATABASE: ${POSTGRES_DB:-chatbot}
+      POSTGRES_USER: ${POSTGRES_USER:-chatbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-password}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      OTEL_METRICS_PORT: ${AUTOMATION_METRICS_PORT:-9105}
+      OTEL_METRICS_HOST: 0.0.0.0
+    command:
+      - python
+      - -m
+      - chatbot.automation.worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          python - <<'PY'
+          import os
+          import urllib.request
+          port = os.environ.get("AUTOMATION_METRICS_PORT") or os.environ.get("OTEL_METRICS_PORT") or "9105"
+          urllib.request.urlopen(f"http://127.0.0.1:{port}/metrics")
+          PY
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - xin_internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    container_name: xin_frontend
+    restart: unless-stopped
+    env_file: *default-env
+    environment:
+      VITE_API_BASE_URL: https://localhost:8443
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - xin_internal
+
+  edge_proxy:
+    image: caddy:2.8
+    container_name: xin_edge_proxy
+    restart: unless-stopped
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      channel_gateway:
+        condition: service_healthy
+    volumes:
+      - ./deploy/compose/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "curl -kfsS https://localhost:8443/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8080:80"
+      - "8443:443"
+    networks:
+      - xin_internal
+      - xin_edge
+
+networks:
+  xin_internal:
+    driver: bridge
+    internal: true
+  xin_edge:
+    driver: bridge
 
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
   minio_data:
+  caddy_data:
+  caddy_config:

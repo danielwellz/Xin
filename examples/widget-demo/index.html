@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Xin Widget Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 32px;
+      }
+      main {
+        max-width: 640px;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 16px;
+        border-radius: 12px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Xin Embed Widget</h1>
+      <p>Copy/paste the snippet below into your site (SSR-safe, bilingual):</p>
+      <pre><code>&lt;script defer src="https://cdn.example.com/embed.js"
+  data-tenant="TENANT_UUID"
+  data-api="https://api.xinbot.ir"
+  data-gateway="wss://gateway.xinbot.ir"
+  data-locale="fa"&gt;&lt;/script&gt;</code></pre>
+      <p>
+        For React apps import <code>@xin-platform/widget-sdk/react</code> and wrap your tree with
+        <code>XinWidgetProvider</code>.
+      </p>
+    </main>
+
+    <script type="module">
+      import XinBot from "../../services/widget/dist/xin-widget.es.js";
+      XinBot.init({
+        tenantId: "demo-tenant",
+        apiBaseUrl: "https://api.example.com",
+        gatewayUrl: "wss://gateway.example.com",
+        locale: "en"
+      });
+    </script>
+  </body>
+</html>

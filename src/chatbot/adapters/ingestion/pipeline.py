@@ -32,7 +32,9 @@ class DocumentFetcher(Protocol):
 
 
 class DocumentNormalizer(Protocol):
-    def normalize(self, job: KnowledgeIngestJob, document: FetchedDocument) -> NormalizedDocument:
+    def normalize(
+        self, job: KnowledgeIngestJob, document: FetchedDocument
+    ) -> NormalizedDocument:
         ...
 
 
@@ -99,7 +101,9 @@ class IngestionPipeline:
         """Execute the ingestion pipeline for the provided job."""
 
         await self._status_repository.mark_running(job.job_id)
-        await self._progress.publish(job=job, status=IngestionStatus.RUNNING, stage="started")
+        await self._progress.publish(
+            job=job, status=IngestionStatus.RUNNING, stage="started"
+        )
 
         try:
             fetched = await self._fetch_documents(job)
@@ -110,8 +114,12 @@ class IngestionPipeline:
         except IngestionError:
             raise
         except Exception as exc:  # pragma: no cover - defensive logging branch
-            logger.exception("unexpected error in ingestion pipeline", extra={"job_id": job.job_id})
-            raise PersistenceError("unexpected ingestion failure", retryable=False) from exc
+            logger.exception(
+                "unexpected error in ingestion pipeline", extra={"job_id": job.job_id}
+            )
+            raise PersistenceError(
+                "unexpected ingestion failure", retryable=False
+            ) from exc
 
         await self._status_repository.mark_completed(
             job.job_id,
@@ -132,7 +140,9 @@ class IngestionPipeline:
             raise
         except Exception as exc:  # pragma: no cover - defensive logging branch
             logger.exception("failed to fetch documents", extra={"job_id": job.job_id})
-            raise FetchError("failed to fetch source documents", retryable=True) from exc
+            raise FetchError(
+                "failed to fetch source documents", retryable=True
+            ) from exc
 
         if not documents:
             raise FetchError("no documents returned from storage", retryable=False)
@@ -157,8 +167,12 @@ class IngestionPipeline:
         except IngestionError:
             raise
         except Exception as exc:  # pragma: no cover - defensive logging branch
-            logger.exception("failed to normalize documents", extra={"job_id": job.job_id})
-            raise NormalizationError("failed to normalize document", retryable=False) from exc
+            logger.exception(
+                "failed to normalize documents", extra={"job_id": job.job_id}
+            )
+            raise NormalizationError(
+                "failed to normalize document", retryable=False
+            ) from exc
 
         if not normalized:
             raise NormalizationError(
@@ -185,7 +199,9 @@ class IngestionPipeline:
             all_chunks.extend(doc_chunks)
 
         if not all_chunks:
-            raise NormalizationError("no chunks produced from documents", retryable=False)
+            raise NormalizationError(
+                "no chunks produced from documents", retryable=False
+            )
 
         return all_chunks
 
@@ -237,7 +253,9 @@ class IngestionPipeline:
             raise
         except Exception as exc:  # pragma: no cover - defensive logging branch
             logger.exception("failed to persist vectors", extra={"job_id": job.job_id})
-            raise PersistenceError("vector store persistence failed", retryable=True) from exc
+            raise PersistenceError(
+                "vector store persistence failed", retryable=True
+            ) from exc
 
         await self._progress.publish(
             job=job,

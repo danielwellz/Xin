@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand: #0061ff;
+  --color-brand-muted: #e6f0ff;
+  --color-on-brand: #ffffff;
+  --color-surface: #ffffff;
+  --color-on-surface: #0f172a;
+  --color-border: #e2e8f0;
+  --layout-gutter: 1.25rem;
+  --font-sans: "Inter", "Vazirmatn";
+  --font-display: "Space Grotesk", "Vazirmatn";
+}
+
+[dir="rtl"] {
+  font-family: "Vazirmatn", "Inter", sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f8fafc;
+  color: var(--color-on-surface);
+}
+
+.card {
+  @apply rounded-2xl border border-border bg-white/90 p-6 shadow-card backdrop-blur;
+}
+
+.chip {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

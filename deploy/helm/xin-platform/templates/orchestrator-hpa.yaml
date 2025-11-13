@@ -1,0 +1,32 @@
+{{- if .Values.orchestrator.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "xin-platform.fullname" . }}-orchestrator
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: orchestrator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "xin-platform.fullname" . }}-orchestrator
+  minReplicas: {{ .Values.orchestrator.hpa.minReplicas }}
+  maxReplicas: {{ .Values.orchestrator.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.orchestrator.hpa.targetCPUUtilizationPercentage }}
+    {{- if .Values.orchestrator.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.orchestrator.hpa.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

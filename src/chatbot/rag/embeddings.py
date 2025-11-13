@@ -93,17 +93,23 @@ class EmbeddingService:
         )
         return [list(map(float, item.embedding)) for item in response.data]
 
-    def _embed_with_sentence_transformer(self, texts: Sequence[str]) -> list[list[float]]:
+    def _embed_with_sentence_transformer(
+        self, texts: Sequence[str]
+    ) -> list[list[float]]:
         model = self._load_sentence_transformer()
         vectors = model.encode(texts, convert_to_numpy=False, normalize_embeddings=True)
         return [list(map(float, vector)) for vector in vectors]
 
-    async def _embed_with_sentence_transformer_async(self, texts: Sequence[str]) -> list[list[float]]:
+    async def _embed_with_sentence_transformer_async(
+        self, texts: Sequence[str]
+    ) -> list[list[float]]:
         loop = asyncio.get_running_loop()
         model = self._load_sentence_transformer()
         vectors = await loop.run_in_executor(
             None,
-            lambda: model.encode(texts, convert_to_numpy=False, normalize_embeddings=True),
+            lambda: model.encode(
+                texts, convert_to_numpy=False, normalize_embeddings=True
+            ),
         )
         return [list(map(float, vector)) for vector in vectors]
 
@@ -111,7 +117,9 @@ class EmbeddingService:
         try:
             from openai import OpenAI
         except ImportError as exc:  # pragma: no cover - guard for missing dependency
-            raise RuntimeError("openai package is required for OpenAI embeddings") from exc
+            raise RuntimeError(
+                "openai package is required for OpenAI embeddings"
+            ) from exc
 
         if not self._settings.openai_api_key:
             raise RuntimeError("openai_api_key must be provided for OpenAI embeddings")
@@ -124,13 +132,17 @@ class EmbeddingService:
         try:
             from openai import AsyncOpenAI
         except ImportError as exc:  # pragma: no cover - guard for missing dependency
-            raise RuntimeError("openai package is required for OpenAI embeddings") from exc
+            raise RuntimeError(
+                "openai package is required for OpenAI embeddings"
+            ) from exc
 
         if not self._settings.openai_api_key:
             raise RuntimeError("openai_api_key must be provided for OpenAI embeddings")
 
         if self._openai_async_client is None:
-            self._openai_async_client = AsyncOpenAI(api_key=self._settings.openai_api_key)
+            self._openai_async_client = AsyncOpenAI(
+                api_key=self._settings.openai_api_key
+            )
         return self._openai_async_client
 
     def _load_sentence_transformer(self) -> Any:
@@ -146,5 +158,7 @@ class EmbeddingService:
                 "loading sentence-transformer model",
                 extra={"model": self._settings.sentence_transformer_model},
             )
-            self._st_model = SentenceTransformer(self._settings.sentence_transformer_model)
+            self._st_model = SentenceTransformer(
+                self._settings.sentence_transformer_model
+            )
         return self._st_model

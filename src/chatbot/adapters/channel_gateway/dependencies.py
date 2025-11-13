@@ -48,7 +48,9 @@ def get_orchestrator_client(settings: SettingsDep) -> OrchestratorClient:
     global _orchestrator_client
     if _orchestrator_client is None:
         _orchestrator_client = OrchestratorClient(
-            settings=OrchestratorClientSettings(base_url=str(settings.orchestrator_url)),
+            settings=OrchestratorClientSettings(
+                base_url=str(settings.orchestrator_url)
+            ),
         )
     return _orchestrator_client
 

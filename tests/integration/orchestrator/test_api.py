@@ -67,7 +67,9 @@ def postgres_container() -> Generator[PostgresContainer, None, None]:
                 )
                 connection.autocommit = True
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", ("chatbot",))
+                    cursor.execute(
+                        "SELECT 1 FROM pg_database WHERE datname = %s", ("chatbot",)
+                    )
                     if cursor.fetchone() is None:
                         cursor.execute("CREATE DATABASE chatbot")
                 connection.close()
@@ -157,9 +159,9 @@ def test_client(
     storage_stub = StubStorageClient()
     ingestion_stub = StubIngestionPublisher()
     app.dependency_overrides[dependencies.get_storage_client] = lambda: storage_stub
-    app.dependency_overrides[
-        dependencies.get_ingestion_job_publisher
-    ] = lambda: ingestion_stub
+    app.dependency_overrides[dependencies.get_ingestion_job_publisher] = (
+        lambda: ingestion_stub
+    )
     app.state.test_storage = storage_stub
     app.state.test_ingestion_publisher = ingestion_stub
     client = TestClient(app)
@@ -281,7 +283,9 @@ def test_upload_knowledge_creates_source_and_enqueues_job(
         assert knowledge.status == db_models.KnowledgeSourceStatus.PENDING
 
     storage_stub: StubStorageClient = test_client.app.state.test_storage
-    ingestion_stub: StubIngestionPublisher = test_client.app.state.test_ingestion_publisher
+    ingestion_stub: StubIngestionPublisher = (
+        test_client.app.state.test_ingestion_publisher
+    )
     assert storage_stub.uploads, "expected object storage upload"
     assert ingestion_stub.jobs, "expected ingestion job to be enqueued"
     assert str(ingestion_stub.jobs[0].knowledge.id) == knowledge_id

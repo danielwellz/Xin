@@ -14,7 +14,9 @@ class Attachment(BaseModel):
     """Attachment metadata supplied with an inbound message."""
 
     type: str = Field(..., description="Attachment type hint (image, file, etc).")
-    url: AnyUrl | None = Field(default=None, description="Optional CDN URL for the attachment.")
+    url: AnyUrl | None = Field(
+        default=None, description="Optional CDN URL for the attachment."
+    )
     metadata: Mapping[str, Any] | None = Field(
         default=None, description="Free-form attachment metadata."
     )

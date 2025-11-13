@@ -1,0 +1,55 @@
+{{- $ing := .Values.global.ingress -}}
+{{- if and $ing.enabled (or (gt (len $ing.tls.orchestratorHosts) 0) (gt (len $ing.tls.gatewayHosts) 0)) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "xin-platform.fullname" . }}
+  labels:
+    app.kubernetes.io/name: ingress
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    {{- range $k, $v := $ing.annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- if $ing.tls.issuer }}
+    cert-manager.io/cluster-issuer: {{ $ing.tls.issuer | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $ing.className }}
+  {{- if or (gt (len $ing.tls.orchestratorHosts) 0) (gt (len $ing.tls.gatewayHosts) 0) }}
+  tls:
+    - secretName: {{ $ing.tls.secretName }}
+      hosts:
+        {{- range $ing.tls.orchestratorHosts }}
+        - {{ . | quote }}
+        {{- end }}
+        {{- range $ing.tls.gatewayHosts }}
+        - {{ . | quote }}
+        {{- end }}
+  {{- end }}
+  rules:
+    {{- range $host := $ing.tls.orchestratorHosts }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "xin-platform.fullname" $ }}-orchestrator
+                port:
+                  number: {{ $.Values.orchestrator.service.port }}
+    {{- end }}
+    {{- range $host := $ing.tls.gatewayHosts }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "xin-platform.fullname" $ }}-channel-gateway
+                port:
+                  number: {{ $.Values.channelGateway.service.port }}
+    {{- end }}
+{{- end }}
