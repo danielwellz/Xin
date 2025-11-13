@@ -46,16 +46,16 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-         test:
-           - "CMD-SHELL"
-           - >
-             python - <<'PY'
-             import urllib.request
-             urllib.request.urlopen("http://localhost:6333/healthz", timeout=2)
-             PY
-         interval: 10s
-         timeout: 5s
-         retries: 5
+        test:
+          - "CMD-SHELL"
+          - >
+            python - <<'PY'
+            import urllib.request
+            urllib.request.urlopen("http://localhost:6333/healthz", timeout=2)
+            PY
+        interval: 10s
+        timeout: 5s
+        retries: 5
     networks:
       - xin_internal
 
@@ -72,16 +72,16 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-         test:
-           - "CMD-SHELL"
-           - >
-             python - <<'PY'
-             import urllib.request
-             urllib.request.urlopen("http://localhost:9000/minio/health/live", timeout=2)
-             PY
-         interval: 10s
-         timeout: 5s
-         retries: 5
+        test:
+          - "CMD-SHELL"
+          - >
+            python - <<'PY'
+            import urllib.request
+            urllib.request.urlopen("http://localhost:9000/minio/health/live", timeout=2)
+            PY
+        interval: 10s
+        timeout: 5s
+        retries: 5
     networks:
       - xin_internal
 
