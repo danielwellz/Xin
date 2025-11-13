@@ -81,6 +81,9 @@ services:
 3. `pnpm dev` to run against the orchestrator (`VITE_USE_MOCKS=true` boots MSW data).
 4. Run the Cypress smoke tests in both locales with `pnpm e2e`.
 5. See `services/frontend/README.md` and `docs/frontend/operator_console.md` for screenshots, tooling, and deployment notes.
+6. Production deploys keep the `frontend` container online and serve it at `/` via Nginx (`/api` continues to hit the FastAPI orchestrator, `/webhooks` routes to the channel gateway). After any release run
+   `docker compose --env-file ../config/compose.env build frontend && docker compose --env-file ../config/compose.env up -d frontend`, reload Nginx, and purge the CDN cache so `https://xinbot.ir` renders the
+   React console immediately.
 
 ## Development Commands
 
@@ -90,6 +93,28 @@ services:
 - `make verify` – Lint, type-check, and ensure coverage ≥ 85%.
 - `make ci` – Aggregates backend + frontend/widget checks (mirrors `.github/workflows/ci.yml`).
 - `make demo ADMIN_TOKEN=<platform_admin_jwt>` – Spins up the demo stack and seeds a tenant/channel for recordings.
+
+### Admin token bootstrap
+
+Both the operator console and helpers like `make demo` need a `platform_admin` JWT. Use the existing JWT service (`src/chatbot/admin/auth.py`) plus settings (`src/chatbot/core/config.py`) to mint one on the host:
+
+```bash
+cd /opt/xin-chatbot/src
+poetry run python - <<'PY'
+from chatbot.admin.auth import JWTService
+from chatbot.core.config import AppSettings
+settings = AppSettings.load()
+svc = JWTService(
+    secret=settings.admin_auth.jwt_secret,
+    issuer=settings.admin_auth.issuer,
+    audience=settings.admin_auth.audience,
+    ttl_seconds=settings.admin_auth.access_token_ttl_minutes * 60,
+)
+print(svc.issue_token(subject="bootstrap-ops", roles=["platform_admin"]))
+PY
+```
+
+Paste the printed token into the console login modal and export it for CLI helpers (`export ADMIN_TOKEN=<jwt>`).
 
 See `AGENTS.md`, `docs/RUNBOOK.md`, and `docs/deployment/xinbot_final_runbook.md`
 for detailed contribution, operations, and production deployment guidance.

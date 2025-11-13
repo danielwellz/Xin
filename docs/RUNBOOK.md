@@ -57,6 +57,27 @@ and `scripts/tls/renew_certificates.sh` (cron/timer friendly).
 
 ## 5. Run-Time Operations
 ### 5.1 Tenant Onboarding
+
+All steps can be executed via the operator console at `https://xinbot.ir` (served from the `frontend` container) once you sign in with a `platform_admin` token. Generate a token directly on the host:
+
+```bash
+cd /opt/xin-chatbot/src
+poetry run python - <<'PY'
+from chatbot.admin.auth import JWTService
+from chatbot.core.config import AppSettings
+settings = AppSettings.load()
+svc = JWTService(
+    secret=settings.admin_auth.jwt_secret,
+    issuer=settings.admin_auth.issuer,
+    audience=settings.admin_auth.audience,
+    ttl_seconds=settings.admin_auth.access_token_ttl_minutes * 60,
+)
+print(svc.issue_token(subject="bootstrap-ops", roles=["platform_admin"]))
+PY
+export ADMIN_TOKEN=<printed_jwt>
+```
+
+The console uses the same API paths described below, so you can fall back to curl/CLI flows at any time. Keep running `make demo ADMIN_TOKEN=$ADMIN_TOKEN` (or `scripts/demo_onboarding.py`) as a smoke test until the UI path is verified end to end.
 1. `POST /admin/tenants` with payload from onboarding form.
 2. `POST /admin/channels` per channel; store returned secrets in Vault.
 3. Generate web embed snippet via `/admin/tenants/{id}/embed_snippet` (temporary curl if UI not ready).

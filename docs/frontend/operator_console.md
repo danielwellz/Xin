@@ -39,6 +39,10 @@ Quality gates:
 - `pnpm build` writes artifacts to `services/frontend/dist`.
 - Dockerfile `services/frontend/Dockerfile` packages the static bundle with Nginx.
 - Docker Compose + Helm chart gained a `frontend` service referencing `/dist`, ensuring the operator console is served alongside backend services.
+- Production keeps that container online at `http://127.0.0.1:4173` (`ports: ["4173:80"]`). After each release run
+  `docker compose --env-file ../config/compose.env build frontend && docker compose --env-file ../config/compose.env up -d frontend` so the CDN-facing bundle stays fresh.
+- `/etc/nginx/sites-available/xin.conf` routes `/` to the frontend container, `/api/` to the FastAPI orchestrator (`127.0.0.1:8000`), and `/webhooks/` to the channel gateway (`127.0.0.1:8080`). Reload Nginx and purge the CDN cache so the operator console is visible immediately.
+- Console login requires a `platform_admin` JWT created via the snippet in `README.md#admin-token-bootstrap`; export it as `ADMIN_TOKEN` for CLI parity.
 
 ## Observability & Audit
 

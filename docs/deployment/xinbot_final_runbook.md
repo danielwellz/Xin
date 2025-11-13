@@ -20,7 +20,8 @@ production VPS (`xinbot.ir`). The guidance assumes the infrastructure described 
 - **Volumes:** `/opt/xin-chatbot/volumes/{postgres,redis,qdrant,minio,...}`
 - **Systemd unit:** `/etc/systemd/system/xin-chatbot.service`
 - **Reverse proxy:** `/etc/nginx/sites-available/xin.conf` (symlinked in `sites-enabled`)
-  - `/` → orchestrator (`127.0.0.1:8000`)
+  - `/` → operator console (`frontend` container @ `127.0.0.1:4173`)
+  - `/api/` → orchestrator (`127.0.0.1:8000`)
   - `/webhooks/` → channel gateway (`127.0.0.1:8080`)
 - **Certificates:** Let’s Encrypt (`/etc/letsencrypt/live/xinbot.ir/*`) renewed via `certbot.timer`
 
@@ -32,7 +33,24 @@ production VPS (`xinbot.ir`). The guidance assumes the infrastructure described 
 2. Up-to-date `compose.env` and `prod.env` under `/opt/xin-chatbot/config`.
 3. Git remote pointing to the correct repository (main branch is the deployment target).
 4. `sudo` password for actions that touch Nginx, certbot, or systemd.
-5. Optional: `ADMIN_TOKEN` with `platform_admin` scope for smoke tests or seeding demo data.
+5. Optional: `ADMIN_TOKEN` with `platform_admin` scope for smoke tests or seeding demo data. Generate one directly on the host:
+
+   ```bash
+   cd /opt/xin-chatbot/src
+   poetry run python - <<'PY'
+   from chatbot.admin.auth import JWTService
+   from chatbot.core.config import AppSettings
+   settings = AppSettings.load()
+   svc = JWTService(
+       secret=settings.admin_auth.jwt_secret,
+       issuer=settings.admin_auth.issuer,
+       audience=settings.admin_auth.audience,
+       ttl_seconds=settings.admin_auth.access_token_ttl_minutes * 60,
+   )
+   print(svc.issue_token(subject="bootstrap-ops", roles=["platform_admin"]))
+   PY
+   export ADMIN_TOKEN=<printed_jwt>
+   ```
 
 ---
 
@@ -53,6 +71,14 @@ Build and stage container images using the shared env file:
 docker compose --env-file ../config/compose.env pull
 docker compose --env-file ../config/compose.env build --pull
 docker compose --env-file ../config/compose.env up -d --remove-orphans
+
+# Refresh the operator console bundle (frontend container serves https://xinbot.ir/)
+docker compose --env-file ../config/compose.env build frontend
+docker compose --env-file ../config/compose.env up -d frontend
+
+# Reload nginx so / proxies the updated bundle; purge CDN cache via the ParsVDS panel
+sudo nginx -t && sudo systemctl reload nginx
+# (CDN) https://panel.parsvds.com/cdn/cache/purge?domain=xinbot.ir
 ```
 
 Apply database migrations inside the orchestrator container (Alembic):
@@ -88,7 +114,10 @@ curl -sf http://127.0.0.1:8080/health && echo "Gateway OK"
 ```bash
 curl -sf https://xinbot.ir/health && echo "HTTPS OK"
 curl -sf https://xinbot.ir/webhooks/health && echo "Webhook OK"
+curl -sf https://xinbot.ir | grep -qi "<title" && echo "Console OK"
 ```
+
+After the console HTML check, mint a fresh `platform_admin` token, sign in at `https://xinbot.ir`, and verify the Tenants + Channels views render live data.
 
 If an external check fails but the internal one passes, investigate CDN configuration,
 certificate validity (`sudo certbot renew --dry-run`), and the Nginx site file.

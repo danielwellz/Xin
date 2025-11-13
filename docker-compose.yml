@@ -257,6 +257,8 @@ services:
     env_file: *default-env
     environment:
       VITE_API_BASE_URL: https://localhost:8443
+    ports:
+      - "4173:80"
     depends_on:
       orchestrator:
         condition: service_healthy
