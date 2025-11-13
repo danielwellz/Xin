@@ -1,0 +1,1 @@
+# Reserved to ensure the `public/` directory exists in Docker build contexts.
