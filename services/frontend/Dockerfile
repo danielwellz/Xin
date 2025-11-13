@@ -13,6 +13,7 @@ COPY services/frontend/package.json \
      services/frontend/tailwind.config.ts \
      services/frontend/postcss.config.cjs \
      ./
+COPY services/frontend/index.html ./index.html
 COPY services/frontend/src ./src
 COPY services/frontend/public ./public
 COPY services/frontend/.storybook ./.storybook
