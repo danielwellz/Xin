@@ -249,26 +249,26 @@ services:
       - xin_internal
 
   frontend:
-    build:
-      context: .
-      dockerfile: services/frontend/Dockerfile
-    container_name: xin_frontend
-    restart: unless-stopped
-    env_file: *default-env
-    environment:
-      VITE_API_BASE_URL: https://localhost:8443
-    ports:
-      - "4173:80"
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - xin_internal
+  build:
+    context: .
+    dockerfile: services/frontend/Dockerfile
+  container_name: xin_frontend
+  restart: unless-stopped
+  env_file: *default-env
+  environment:
+    VITE_API_BASE_URL: https://localhost:8443
+  ports:
+    - "4173:80"  # <-- This line should expose the frontend container
+  depends_on:
+    orchestrator:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+  networks:
+    - xin_internal
 
   edge_proxy:
     image: caddy:2.8
