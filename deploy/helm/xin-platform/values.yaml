@@ -59,7 +59,7 @@ orchestrator:
     INGEST_REDIS_DB: "0"
     INGEST_QUEUE_NAME: ingestion
   secretRefs: []
-  startCommand: "uvicorn chatbot.adapters.orchestrator.app:create_app --factory --host 0.0.0.0 --port 8000"
+  startCommand: "uvicorn chatbot.apps.orchestrator.app:create_app --factory --host 0.0.0.0 --port 8000"
   probes:
     liveness:
       path: /health
@@ -104,7 +104,7 @@ channelGateway:
     GATEWAY_REDIS__PORT: "6379"
     GATEWAY_REDIS__DB: "0"
   secretRefs: []
-  startCommand: "uvicorn chatbot.adapters.channel_gateway.app:create_app --factory --host 0.0.0.0 --port 8080"
+  startCommand: "uvicorn chatbot.apps.gateway.app:create_app --factory --host 0.0.0.0 --port 8080"
   probes:
     liveness:
       path: /health

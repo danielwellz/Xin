@@ -36,4 +36,4 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 
 EXPOSE 8000
-CMD ["uvicorn", "chatbot.adapters.orchestrator.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "chatbot.apps.orchestrator.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

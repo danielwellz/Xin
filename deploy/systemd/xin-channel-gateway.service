@@ -11,7 +11,7 @@ WorkingDirectory=/opt/xin-chatbot/src
 EnvironmentFile=/opt/xin-chatbot/config/gateway.env
 Environment="PATH=/opt/xin-chatbot/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="PYTHONPATH=/opt/xin-chatbot/src"
-ExecStart=/usr/bin/env bash -c 'source /opt/xin-chatbot/.venv/bin/activate && exec uvicorn chatbot.adapters.channel_gateway.app:create_app --factory --host "${GATEWAY_BIND:-127.0.0.1}" --port "${GATEWAY_PORT:-8080}"'
+ExecStart=/usr/bin/env bash -c 'source /opt/xin-chatbot/.venv/bin/activate && exec uvicorn chatbot.apps.gateway.app:create_app --factory --host "${GATEWAY_BIND:-127.0.0.1}" --port "${GATEWAY_PORT:-8080}"'
 ExecStartPost=/usr/bin/env bash -c '/opt/xin-chatbot/src/scripts/systemd/healthcheck.sh --url "http://127.0.0.1:${GATEWAY_PORT:-8080}/health" --name xin-channel-gateway'
 Restart=on-failure
 RestartSec=5

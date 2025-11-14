@@ -1,5 +1,9 @@
 # Rollback & Contingency Plan
 
+> **Legacy reference:** Commands below reference the old `compose.env`
+> workflow. Use `DEPLOYMENT.md` + `.env.production` for live remediation and
+> keep this document for historical/retro purposes.
+
 _Release:_  
 _Prepared by:_  
 _Last updated:_

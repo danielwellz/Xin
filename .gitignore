@@ -30,3 +30,9 @@ site/
 # IDE configs
 .idea/
 .vscode/
+
+# Environment files
+.env
+.env.local
+.env.production
+config/.env.*

@@ -23,7 +23,7 @@ class SimulatorSettings(BaseSettings):
     """Environment for the simulator process."""
 
     model_config = SettingsConfigDict(
-        env_prefix="SIM_", env_file=".env", case_sensitive=False
+        env_prefix="SIM_", env_file=(".env.local", ".env"), case_sensitive=False
     )
 
     target_url: AnyHttpUrl = "http://localhost:8080"
@@ -115,7 +115,7 @@ def main() -> None:
     import uvicorn
 
     uvicorn.run(
-        "chatbot.adapters.channel_gateway.simulator.app:app",
+        "chatbot.apps.gateway.simulator.app:app",
         host="127.0.0.1",
         port=8085,
         reload=False,

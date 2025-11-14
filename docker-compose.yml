@@ -1,10 +1,12 @@
+# Set XIN_ENV_FILE to override the env file path (defaults to config/.env.docker).
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: xin_postgres
     restart: always
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-chatbot}
       POSTGRES_USER: ${POSTGRES_USER:-chatbot}
@@ -26,7 +28,7 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     restart: always
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -42,7 +44,7 @@ services:
     container_name: xin_qdrant
     restart: always
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -64,7 +66,7 @@ services:
     container_name: xin_minio
     restart: always
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio-secret}
@@ -92,7 +94,7 @@ services:
     container_name: xin_orchestrator
     restart: unless-stopped
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       PYTHONPATH: /app/src
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -138,7 +140,7 @@ services:
     container_name: xin_channel_gateway
     restart: unless-stopped
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       GATEWAY_ORCHESTRATOR_URL: http://orchestrator:8000
       GATEWAY_INSTAGRAM_SECRET: ${GATEWAY_INSTAGRAM_SECRET:-dev-instagram}
@@ -173,7 +175,7 @@ services:
     container_name: xin_ingestion_worker
     restart: unless-stopped
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       INGEST_REDIS_HOST: ${INGEST_REDIS_HOST:-redis}
       INGEST_REDIS_PORT: ${INGEST_REDIS_PORT:-6379}
@@ -222,7 +224,7 @@ services:
     container_name: xin_automation_worker
     restart: unless-stopped
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       PYTHONPATH: /app/src
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
@@ -270,7 +272,7 @@ services:
     container_name: xin_frontend
     restart: unless-stopped
     env_file:
-      - ../config/compose.env
+      - ${XIN_ENV_FILE:-config/.env.docker}
     environment:
       VITE_API_BASE_URL: https://localhost:8443
     ports:

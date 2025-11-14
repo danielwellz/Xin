@@ -10,23 +10,23 @@ from arq.connections import RedisSettings
 from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
-from chatbot.adapters.ingestion.postgres import (
+from chatbot.apps.ingestion.postgres import (
     PostgresStatusRepository,
     PostgresStatusSettings,
 )
-from chatbot.adapters.ingestion.redis import (
+from chatbot.apps.ingestion.redis import (
     ProgressPublisherSettings,
     RedisPoisonQueue,
     RedisProgressPublisher,
 )
-from chatbot.adapters.ingestion.s3 import MinioDocumentFetcher, MinioFetcherSettings
-from chatbot.adapters.ingestion.vector_store import QdrantVectorStoreAdapter
-from chatbot.adapters.ingestion.embedding import AsyncEmbeddingAdapter
-from chatbot.adapters.ingestion.errors import IngestionError
-from chatbot.adapters.ingestion.models import IngestionStatus, KnowledgeIngestJob
-from chatbot.adapters.ingestion.normalizer import MarkdownNormalizer
-from chatbot.adapters.ingestion.pipeline import IngestionPipeline
-from chatbot.adapters.ingestion.settings import IngestionWorkerSettings
+from chatbot.apps.ingestion.s3 import MinioDocumentFetcher, MinioFetcherSettings
+from chatbot.apps.ingestion.vector_store import QdrantVectorStoreAdapter
+from chatbot.apps.ingestion.embedding import AsyncEmbeddingAdapter
+from chatbot.apps.ingestion.errors import IngestionError
+from chatbot.apps.ingestion.models import IngestionStatus, KnowledgeIngestJob
+from chatbot.apps.ingestion.normalizer import MarkdownNormalizer
+from chatbot.apps.ingestion.pipeline import IngestionPipeline
+from chatbot.apps.ingestion.settings import IngestionWorkerSettings
 from chatbot.utils.retry import exponential_backoff
 from chatbot.core.logging import configure_logging
 from chatbot.core.telemetry import (

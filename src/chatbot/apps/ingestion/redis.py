@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
-from chatbot.adapters.ingestion.errors import IngestionError
-from chatbot.adapters.ingestion.models import IngestionStatus, KnowledgeIngestJob
+from chatbot.apps.ingestion.errors import IngestionError
+from chatbot.apps.ingestion.models import IngestionStatus, KnowledgeIngestJob
 
 logger = logging.getLogger(__name__)
 

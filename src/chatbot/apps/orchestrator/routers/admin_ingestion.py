@@ -10,13 +10,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 
 from chatbot.admin import schemas
 from chatbot.admin.service import AdminService
-from chatbot.adapters.orchestrator import dependencies
-from chatbot.adapters.orchestrator.routers.admin import require_scope
-from chatbot.adapters.orchestrator.services import (
+from chatbot.apps.orchestrator import dependencies
+from chatbot.apps.orchestrator.routers.admin import require_scope
+from chatbot.apps.orchestrator.services import (
     KnowledgeRegistrationResult,
     KnowledgeService,
 )
-from chatbot.adapters.orchestrator.tasks import IngestionJobPublisher
+from chatbot.apps.orchestrator.tasks import IngestionJobPublisher
 from chatbot.core.db import models
 
 router = APIRouter(prefix="/admin", tags=["admin-ingestion"])

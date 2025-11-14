@@ -12,7 +12,7 @@ class IngestionWorkerSettings(BaseSettings):
     """Configuration sourced from environment variables or .env files."""
 
     model_config = SettingsConfigDict(
-        env_prefix="INGEST_", env_file=".env", case_sensitive=False
+        env_prefix="INGEST_", env_file=(".env.local", ".env"), case_sensitive=False
     )
 
     redis_host: str = "localhost"

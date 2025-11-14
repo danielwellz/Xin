@@ -33,9 +33,6 @@ def init_tracing(
     if _TRACING_INITIALISED:
         return
 
-    resource = Resource.create({"service.name": service_name})
-    tracer_provider = TracerProvider(resource=resource)
-    trace.set_tracer_provider(tracer_provider)
     effective_endpoint = (
         endpoint
         or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -46,8 +43,11 @@ def init_tracing(
             "distributed tracing disabled; no OTLP endpoint configured",
             extra={"service_name": service_name},
         )
-        _TRACING_INITIALISED = True
         return
+
+    resource = Resource.create({"service.name": service_name})
+    tracer_provider = TracerProvider(resource=resource)
+    trace.set_tracer_provider(tracer_provider)
 
     try:
         exporter_headers = dict(headers) if headers is not None else None
@@ -58,7 +58,11 @@ def init_tracing(
         logger.exception("failed to initialise OTLP span exporter; tracing disabled")
         return
 
-    tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter))
+    span_processor = BatchSpanProcessor(span_exporter)
+    if not hasattr(span_processor, "shutdown"):
+        setattr(span_processor, "shutdown", lambda: None)  # type: ignore[attr-defined]
+
+    tracer_provider.add_span_processor(span_processor)
     _instrument_httpx()
     _TRACING_INITIALISED = True
     logger.info(

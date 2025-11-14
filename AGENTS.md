@@ -1,4 +1,4 @@
-# Repository Guidelines
+# Repository Guidelines & Agents
 
 ## Project Structure & Module Organization
 - Place application code in `src/`, using a `chatbot/` package for core conversation flows and an `adapters/` subpackage for I/O or platform bindings.
@@ -33,7 +33,10 @@
 - Validate incoming payloads with `pydantic` models and log sanitized request fragments only.
 - Store uploaded knowledge assets exclusively through the configured object storage credentials (`STORAGE_*` settings).
 
+---
+
 ## Prompt Library
+
 Reference these prompts before starting any major milestone so every contributor triggers the right scripted workflow.
 
 ### Backend & Frontend Delivery
@@ -47,3 +50,38 @@ The original five backend/frontend prompts have been executed and archived after
 | Load, Chaos & Resilience Validation | Launch prior to scale testing or SLO sign-off; rerun before major releases. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-3--load-chaos-and-resilience-validation) |
 | QA, Data Integrity & Release Verification | Kick off when regression/verification window begins for a release candidate. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-4--qa-data-integrity-and-release-verification) |
 | Launch Readiness & Post-Launch Guardrails | Use during final go/no-go prep and post-launch war-room planning. | [docs/MASTER_PROMPTS_HARDENING.md](docs/MASTER_PROMPTS_HARDENING.md#prompt-5--launch-readiness-rollback-and-post-launch-guardrails) |
+
+### Xin ChatBot Architecture & Deployment Refactor Agent
+
+This agent is responsible for a **full-repo architecture refactor** of Xin ChatBot while preserving all existing features and channel integrations (Instagram, WhatsApp Business, Telegram bot, Web chat), and producing a production-ready deploy plan for:
+
+- Local development
+- Local production-like builds
+- VPS production deployment on Debian 12 at `87.107.105.19` behind ArvanCloud, served at `xinbot.ir`.
+
+| Prompt | Triggering Condition | Link |
+| --- | --- | --- |
+| Xin ChatBot Full-Repo Architecture Refactor & Deploybook | Run when the codebase is stable, tests are passing, and we want to upgrade architecture, environment layout, and deployment for Xin ChatBot without removing features. | `docs/MASTER_PROMPT_XIN_REFACTOR.md` |
+
+**Execution checklist (human steps):**
+1. Ensure `main` (or the primary branch) is green and pushed.
+2. Create a dedicated refactor branch (e.g., `refactor/xin-architecture-v2`).
+3. Open the entire repository in Codex (or the chosen code model) so it can see all files.
+4. Open `docs/MASTER_PROMPT_XIN_REFACTOR.md` and paste its contents into the model as the controlling prompt.
+5. Let the agent:
+   - Analyze the current architecture (backend, frontend, multi-tenancy, channels, knowledge docs, AI orchestration).
+   - Propose and implement an improved architecture within this repo.
+   - Set up clear env layouts for:
+     - Local dev
+     - Local “dockerized” / prod-like
+     - VPS production (`xinbot.ir`, Debian 12, Docker + Nginx, ArvanCloud).
+   - Add or update `DEPLOYMENT.md` (Deploybook) with exact VPS setup and deploy steps.
+6. Review the diff manually:
+   - Run `poetry run pytest` (and any frontend tests/build).
+   - Fix or iterate where necessary.
+   - Only merge when behavior is preserved and deployment is validated.
+
+**Important constraints for this agent:**
+- **Must not remove any existing features or channel integrations.**
+- **May freely reorganize modules, rename for clarity, and improve architecture.**
+- **Must document env vars, Docker/Nginx config, and the deploy story to the Debian 12 VPS (`87.107.105.19`, `xinbot.ir`).**

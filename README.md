@@ -1,52 +1,59 @@
-# Business Messaging Platform
+# Xin ChatBot
 
-Xin is a multi-channel, multi-tenant messaging assistant that blends knowledge
-ingestion, RAG retrieval, and automated responses. The repository hosts three
-services:
+Xin is a multi-tenant, multi-channel messaging platform that ingests tenant
+knowledge, runs RAG + policy evaluation, and responds to customers on Instagram,
+WhatsApp Business, Telegram, and the hosted web widget.
 
-- **Orchestrator** – FastAPI API that processes inbound messages, persists
-  conversation state, calls the LLM, and emits outbound responses.
-- **Channel Gateway** – Webhook façade for channel providers (Instagram,
-  WhatsApp, Telegram, Web Chat) that forwards normalized payloads to the
-  orchestrator and delivers outbound responses.
-- **Ingestion Worker** – Asynchronous worker that ingests knowledge uploads into
-  MinIO/S3, chunks content, generates embeddings, and upserts vectors to Qdrant.
-- **Widget SDK** – Lightweight embed (`services/widget`) that exposes `/embed.js` and React bindings for client-facing chat.
-- **Frontend** – Vite + React operator console (Phase 3 parity) located at
-  `services/frontend` with bilingual tenant/channel/policy tooling.
+## Services & directories
 
-## Quick Start
+| Component | Location | Notes |
+| --- | --- | --- |
+| Orchestrator API | `src/chatbot/apps/orchestrator` | FastAPI app (`uvicorn chatbot.apps.orchestrator.app:create_app`) |
+| Channel Gateway | `src/chatbot/apps/gateway` | FastAPI webhooks + outbound worker |
+| Ingestion worker | `src/chatbot/apps/ingestion` | ARQ worker + document pipeline |
+| Automation worker | `src/chatbot/automation` | APScheduler loop (shares orchestrator image) |
+| React operator console | `services/frontend` | Tenant/channel/policy UI |
+| Widget SDK | `services/widget` | `/embed.js` bundle + React bindings |
 
-1. **Install dependencies**
+See `docs/ARCHITECTURE.md` for the Phase 3 snapshot and the target `chatbot.apps.*`
+layout introduced in this refactor.
+
+---
+
+## Local development
+
+### Backend via Poetry
+
+1. Install deps and copy the developer env template:
 
    ```bash
    poetry install
+   cp .env.example .env.local
    ```
 
-2. **Start infrastructure**
+2. Start the stateful services (Postgres, Redis, Qdrant, MinIO) via Docker:
 
    ```bash
-   docker compose up postgres redis qdrant minio -d
+   docker compose up -d postgres redis qdrant minio
    ```
 
-3. **Configure environment**
-
-   Copy `.env.example` (or create `.env`) and provide values for:
-
-   - `POSTGRES_*`, `REDIS_URL`, `QDRANT_*`
-   - `STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`,
-     `STORAGE_BUCKET`
-   - `INGEST_REDIS_HOST`, `INGEST_REDIS_PORT`, `INGEST_REDIS_DB`,
-     `INGEST_QUEUE_NAME`
-
-4. **Run the orchestrator**
+3. Run the orchestrator with hot reload:
 
    ```bash
-   poetry run uvicorn chatbot.adapters.orchestrator.app:create_app \
-     --factory --host 0.0.0.0 --port 8000
+   poetry run uvicorn chatbot.apps.orchestrator.app:create_app --factory --reload
    ```
 
-5. **Simulate a chat session**
+4. Optional helpers:
+
+   ```bash
+   # Gateway webhooks for local testing
+   poetry run uvicorn chatbot.apps.gateway.app:create_app --factory --port 8080
+
+   # Ingestion worker
+   poetry run arq chatbot.apps.ingestion.worker.WorkerSettings
+   ```
+
+5. CLI smoke test:
 
    ```bash
    poetry run python -m chatbot.cli \
@@ -56,34 +63,51 @@ services:
      --channel-id <channel_uuid>
    ```
 
-   The CLI opens an interactive prompt that posts `POST /v1/messages/inbound`
-   calls and prints the orchestrator's response payload.
-
-6. **Upload knowledge**
+6. Upload a knowledge doc:
 
    ```bash
    curl -F "file=@docs/faq.md" \
      http://localhost:8000/v1/brands/<brand_uuid>/knowledge
    ```
 
-   The orchestrator stores the file in object storage and enqueues an ingestion
-   job. Ensure the ingestion worker is running:
+### Local prod-like stack (Docker Compose)
+
+1. Copy the Compose template and tweak any secrets:
 
    ```bash
-   poetry run arq chatbot.adapters.ingestion.worker.WorkerSettings
+   cp config/examples/.env.docker.example config/.env.docker
    ```
 
-### Operator Console (Phase 3)
+2. Bring the stack online (defaults to `config/.env.docker`). Set
+   `XIN_ENV_FILE` if you keep the env file elsewhere.
+
+   ```bash
+   docker compose --env-file config/.env.docker up -d
+   docker compose --env-file config/.env.docker ps
+   ```
+
+3. Tear down with `docker compose down` when finished. Named volumes persist
+   Postgres/Qdrant/Redis data between runs.
+
+### Operator console
 
 1. `cd services/frontend && pnpm install`
-2. Copy `.env.example` → `.env` if you need to override `VITE_API_BASE_URL`. (Production
-   defaults to `window.location.origin`, so xinbot.ir works without extra config.)
-3. `pnpm dev` to run against the orchestrator (`VITE_USE_MOCKS=true` boots MSW data).
-4. Run the Cypress smoke tests in both locales with `pnpm e2e`.
-5. See `services/frontend/README.md` and `docs/frontend/operator_console.md` for screenshots, tooling, and deployment notes.
-6. Production deploys keep the `frontend` container online and serve it at `/` via Nginx (`/api` continues to hit the FastAPI orchestrator, `/webhooks` routes to the channel gateway). After any release run
-   `docker compose --env-file ../config/compose.env build frontend && docker compose --env-file ../config/compose.env up -d frontend`, reload Nginx, and purge the CDN cache so `https://xinbot.ir` renders the
-   React console immediately.
+2. Copy `.env.example` → `.env` if you need to override `VITE_API_BASE_URL`
+   (defaults to `window.location.origin` so xinbot.ir works without extra config).
+3. `pnpm dev` for local development (`VITE_USE_MOCKS=true` boots MSW fixtures).
+4. `pnpm e2e` to run the Cypress smoke suite, `pnpm lint` / `pnpm test` for
+   static checks.
+5. Production builds use the Dockerfile in `services/frontend`. After updating
+   the console run `docker compose --env-file <envfile> build frontend && docker compose --env-file <envfile> up -d frontend`, reload Nginx, and purge the ArvanCloud cache.
+
+---
+
+## Deployment
+
+`DEPLOYMENT.md` documents the full Debian 12 deploy plan (user creation, Docker,
+Nginx + Let’s Encrypt, env files, ArvanCloud notes, and redeploy commands). The
+legacy Phase 3 runbook is preserved under `docs/deployment/xinbot_final_runbook.md`
+for historical reference.
 
 ## Development Commands
 
@@ -117,4 +141,4 @@ PY
 Paste the printed token into the console login modal and export it for CLI helpers (`export ADMIN_TOKEN=<jwt>`).
 
 See `AGENTS.md`, `docs/RUNBOOK.md`, and `docs/deployment/xinbot_final_runbook.md`
-for detailed contribution, operations, and production deployment guidance.
+for contribution history. For live ops run through `DEPLOYMENT.md`.

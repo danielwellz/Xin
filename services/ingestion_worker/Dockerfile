@@ -31,4 +31,4 @@ WORKDIR /app
 COPY src ./src
 COPY pyproject.toml ./
 
-CMD ["arq", "chatbot.adapters.ingestion.worker.WorkerSettings"]
+CMD ["arq", "chatbot.apps.ingestion.worker.WorkerSettings"]

@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from chatbot.adapters.ingestion.errors import EmbeddingError, FetchError
-from chatbot.adapters.ingestion.models import (
+from chatbot.apps.ingestion.errors import EmbeddingError, FetchError
+from chatbot.apps.ingestion.models import (
     FetchedDocument,
     IngestionStatus,
     KnowledgeIngestJob,
 )
-from chatbot.adapters.ingestion.normalizer import MarkdownNormalizer
-from chatbot.adapters.ingestion.pipeline import IngestionPipeline
+from chatbot.apps.ingestion.normalizer import MarkdownNormalizer
+from chatbot.apps.ingestion.pipeline import IngestionPipeline
 
 pytestmark = pytest.mark.unit
 

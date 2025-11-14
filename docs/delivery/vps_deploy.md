@@ -1,5 +1,9 @@
 # VPS Deployment Playbook (xinbot.ir)
 
+> **Legacy reference:** This playbook documents the old `compose.env` /
+> `prod.env` workflow. Follow `DEPLOYMENT.md` for the current Debian 12 +
+> `.env.production` process; keep this file only for historical audits.
+
 This guide captures the exact steps required to deploy the latest Xin ChatBot build to the production VPS (`xinbot.ir`). It assumes the infrastructure baseline described in `docs/MASTER_PROMPTS_HARDENING.md` and the runbook’s SLO/ops guidance.
 
 ## 1. Environment Snapshot

@@ -22,6 +22,7 @@ class QueueConfig:
     """Runtime configuration for the ingestion queue."""
 
     redis_settings: RedisSettings
+    queue_name: str
 
 
 def _build_queue_config(settings: IngestionQueueSettings) -> QueueConfig:
@@ -31,10 +32,7 @@ def _build_queue_config(settings: IngestionQueueSettings) -> QueueConfig:
         database=settings.redis_db,
         password=settings.redis_password,
     )
-    return QueueConfig(
-        redis=redis_settings,
-        queue_name=settings.queue_name,
-    )
+    return QueueConfig(redis_settings=redis_settings, queue_name=settings.queue_name)
 
 
 class IngestionJobPublisher:
@@ -78,6 +76,9 @@ class IngestionJobPublisher:
 
         async with self._lock:
             if self._pool is None:
-                logger.info("connecting to ingestion queue")
+                logger.info(
+                    "connecting to ingestion queue",
+                    extra={"queue_name": self._config.queue_name},
+                )
                 self._pool = await create_pool(self._config.redis_settings)
         return self._pool

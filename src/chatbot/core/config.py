@@ -14,12 +14,14 @@ from typing import Any
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_ENV_FILES = (".env.local", ".env")
+
 
 class BaseAppSettings(BaseSettings):
     """Base settings that looks at environment variables and an optional .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -31,7 +33,7 @@ class PostgresSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="postgres_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -62,7 +64,7 @@ class RedisSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="redis_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -76,7 +78,7 @@ class QdrantSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="qdrant_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -99,7 +101,7 @@ class OpenAISettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="openai_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -116,7 +118,7 @@ class OpenRouterSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="openrouter_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -132,7 +134,7 @@ class LLMSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="llm_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -169,7 +171,7 @@ class TelemetrySettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="otel_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -186,7 +188,7 @@ class StorageSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="storage_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -204,7 +206,7 @@ class AdminAuthSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="admin_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -221,7 +223,7 @@ class IngestionQueueSettings(BaseAppSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="ingest_",
-        env_file=".env",
+        env_file=DEFAULT_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

@@ -13,7 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from chatbot.admin import schemas
 from chatbot.admin.auth import TokenClaims, TokenValidationError
 from chatbot.admin.service import AdminService
-from chatbot.adapters.orchestrator import dependencies
+from chatbot.apps.orchestrator import dependencies
 from chatbot.core.db import models
 
 router = APIRouter(prefix="/admin", tags=["admin"])

@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from chatbot.adapters.orchestrator import dependencies
-from chatbot.adapters.orchestrator.app import create_app
-from chatbot.adapters.orchestrator.routers import admin as admin_router
+from chatbot.apps.orchestrator import dependencies
+from chatbot.apps.orchestrator.app import create_app
+from chatbot.apps.orchestrator.routers import admin as admin_router
 from chatbot.admin.auth import TokenClaims
 
 

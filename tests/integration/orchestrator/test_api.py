@@ -18,8 +18,8 @@ from testcontainers.redis import RedisContainer
 
 from chatbot.core.db import models as db_models
 from chatbot.core.db.session import init_db
-from chatbot.adapters.orchestrator import dependencies
-from chatbot.adapters.orchestrator.app import create_app
+from chatbot.apps.orchestrator import dependencies
+from chatbot.apps.orchestrator.app import create_app
 from chatbot.core.storage import StorageUploadResult
 
 pytestmark = pytest.mark.integration

@@ -55,9 +55,9 @@ spec:
             - -c
             - |
               set -o pipefail
-              arq chatbot.adapters.ingestion.worker.WorkerSettings 2>&1 | tee /var/log/xin/app.log
+              arq chatbot.apps.ingestion.worker.WorkerSettings 2>&1 | tee /var/log/xin/app.log
           {{- else }}
-          command: ["arq", "chatbot.adapters.ingestion.worker.WorkerSettings"]
+          command: ["arq", "chatbot.apps.ingestion.worker.WorkerSettings"]
           {{- end }}
           env:
             {{- range $key, $value := .Values.ingestionWorker.env }}

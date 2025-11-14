@@ -1,5 +1,9 @@
 # Xin ChatBot Production Deployment (xinbot.ir)
 
+> **Phase 3 archive:** This runbook documents the previous deployment flow.
+> The active, Debian 12 specific deploy plan now lives in `DEPLOYMENT.md`.
+> Keep this file for historical reference and troubleshooting past releases.
+
 This document is the canonical runbook for deploying and operating Xin ChatBot on the
 production VPS (`xinbot.ir`). The guidance assumes the infrastructure described in
 `AGENTS.md` and mirrors the live topology: Docker Compose stack managed by
@@ -194,7 +198,7 @@ Common issues:
 ## 9. Dev ↔ Prod Parity
 
 - **Local stack:** `docker compose -f docker-compose.yml -f deploy/observability/docker-compose.yml --env-file deploy/compose/.env.dev up`.
-- **Backend:** `poetry run uvicorn chatbot.adapters.orchestrator.app:create_app --factory --reload`.
+- **Backend:** `poetry run uvicorn chatbot.apps.orchestrator.app:create_app --factory --reload`.
 - **Frontend:** defaults to `window.location.origin`; override via `.env` (`VITE_API_BASE_URL=http://localhost:8000`)
   when running `pnpm dev`.
 - **Environment files:** never commit `prod.env`/`compose.env`. Use `.env` locally and `python-dotenv`

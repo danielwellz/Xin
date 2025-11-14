@@ -8,8 +8,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from chatbot.admin import schemas
-from chatbot.adapters.orchestrator import dependencies
-from chatbot.adapters.orchestrator.routers.admin import require_scope
+from chatbot.apps.orchestrator import dependencies
+from chatbot.apps.orchestrator.routers.admin import require_scope
 from chatbot.automation.service import AutomationService
 from chatbot.core.db import models
 

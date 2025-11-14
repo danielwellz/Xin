@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from chatbot.adapters.channel_gateway.outbound import (
+from chatbot.apps.gateway.outbound import (
     OutboundStreamConsumer,
     RedisStreamConfig,
 )

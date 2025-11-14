@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from chatbot.admin import schemas
 from chatbot.admin.service import AdminService
-from chatbot.adapters.orchestrator import dependencies
-from chatbot.adapters.orchestrator.routers.admin import require_scope
+from chatbot.apps.orchestrator import dependencies
+from chatbot.apps.orchestrator.routers.admin import require_scope
 from chatbot.core.db import models
 
 router = APIRouter(prefix="/admin", tags=["admin-policies"])

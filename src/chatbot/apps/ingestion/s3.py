@@ -10,8 +10,8 @@ from urllib.parse import urlparse
 import aioboto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-from chatbot.adapters.ingestion.errors import FetchError
-from chatbot.adapters.ingestion.models import FetchedDocument, KnowledgeIngestJob
+from chatbot.apps.ingestion.errors import FetchError
+from chatbot.apps.ingestion.models import FetchedDocument, KnowledgeIngestJob
 
 
 @dataclass(slots=True)

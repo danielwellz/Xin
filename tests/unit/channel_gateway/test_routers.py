@@ -9,13 +9,13 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 
-from chatbot.adapters.channel_gateway import dependencies as deps
-from chatbot.adapters.channel_gateway.app import create_app
-from chatbot.adapters.channel_gateway.dependencies import (
+from chatbot.apps.gateway import dependencies as deps
+from chatbot.apps.gateway.app import create_app
+from chatbot.apps.gateway.dependencies import (
     get_orchestrator_client,
     get_settings,
 )
-from chatbot.adapters.channel_gateway.settings import ChannelGatewaySettings
+from chatbot.apps.gateway.settings import ChannelGatewaySettings
 
 
 class StubOrchestratorClient:

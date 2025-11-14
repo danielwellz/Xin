@@ -9,8 +9,8 @@ from collections.abc import Iterable
 
 import httpx
 
-from chatbot.adapters.ingestion.errors import PersistenceError
-from chatbot.adapters.ingestion.models import ChunkEmbedding
+from chatbot.apps.ingestion.errors import PersistenceError
+from chatbot.apps.ingestion.models import ChunkEmbedding
 
 logger = logging.getLogger(__name__)
 
